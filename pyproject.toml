@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "omnismi"
+version = "0.1.0"
+description = "Unified GPU Monitoring and Observability Layer"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Omnismi Contributors"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Core dependencies - auto-installed
+dependencies = []
+
+# Optional vendor dependencies
+[project.optional-dependencies]
+# Install all vendor support
+all = [
+    "pynvml>=11.5.0",
+    "amdsmi>=1.0.0",
+]
+# NVIDIA GPU support (pynvml)
+nvidia = [
+    "pynvml>=11.5.0",
+]
+# AMD GPU support (amdsmi + rocm)
+amd = [
+    "amdsmi>=1.0.0",
+]
+# Development dependencies
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.0",
+    "black>=23.0",
+    "isort>=5.12",
+    "ruff>=0.1",
+]
+
+[project.scripts]
+omnismi = "omnismi.cli.main:main"
+omnismi-install = "omnismi.cli.install:main"
+
+[project.urls]
+Homepage = "https://github.com/omnismi/omnismi"
+Repository = "https://github.com/omnismi/omnismi"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "I", "N", "UP"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.9"
+strict = false
+warn_return_any = true
+warn_unused_configs = true

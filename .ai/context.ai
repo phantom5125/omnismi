@@ -1,0 +1,46 @@
+# Omnismi - AI Context and Design Decisions
+
+## Project Vision
+
+Omnismi aims to be the **unified abstraction layer** for GPU monitoring in Python. The primary goal is to provide a single, vendor-agnostic API that works across NVIDIA, AMD, and potentially other GPU vendors.
+
+## Core Design Decisions
+
+### 1. Why Python?
+- **Integration**: pynvml and amdsmi are both Python libraries
+- **ML Ecosystem**: Most ML frameworks (PyTorch, TensorFlow, Ray) use Python
+- **Ease of Use**: Lower barrier to entry for users
+
+### 2. Architecture Pattern: Strategy + Factory
+- **BaseVendor** (Strategy): Abstract interface for vendor implementations
+- **Vendor Registry**: Auto-registration pattern for pluggable vendors
+- **GPUDevice**: Facade that combines static info + dynamic metrics
+
+### 3. Graceful Degradation
+- Each vendor is independent - if one fails, others still work
+- Metrics are optional - return None if unavailable
+- Auto-detection of available vendors
+
+### 4. Unified Types
+- `GPUInfo`: Static information (name, vendor, memory)
+- `GPUMetrics`: Dynamic information (utilization, temperature)
+
+## Future Considerations (Out of Scope for v1)
+
+- Intel GPU support (requires oneAPI or Level Zero)
+- Real-time streaming (WebSocket, SSE)
+- Metrics history/persistence
+- Alerting system
+- Multi-node/GPU cluster support
+
+## Code Style
+
+- Follow PEP 8 with Black formatting (88 char line length)
+- Type hints required for public APIs
+- Use dataclasses for simple data structures
+- Keep vendor implementations as thin wrappers around vendor libraries
+
+## Versioning
+
+- Start at 0.1.0 (alpha)
+- Follow Semantic Versioning after 1.0.0
