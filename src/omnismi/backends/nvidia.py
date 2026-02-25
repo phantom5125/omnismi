@@ -1,0 +1,208 @@
+"""NVIDIA backend powered by nvidia-ml-py (pynvml module)."""
+
+from __future__ import annotations
+
+import time
+from typing import Any
+
+from omnismi.backends.base import BaseBackend
+from omnismi.models import GPUMetrics, GPUInfo
+from omnismi.normalize import (
+    normalize_bytes,
+    normalize_clock_mhz,
+    normalize_percent,
+    normalize_power_w,
+    normalize_temperature_c,
+    normalize_text,
+    normalize_uuid,
+)
+
+
+class NvidiaBackend(BaseBackend):
+    """Query NVIDIA GPUs via NVML."""
+
+    vendor = "nvidia"
+
+    def __init__(self) -> None:
+        self._nvml: Any | None = None
+        self._import_failed = False
+        self._initialized = False
+
+    def _import_nvml(self) -> bool:
+        if self._nvml is not None:
+            return True
+        if self._import_failed:
+            return False
+        try:
+            import pynvml as nvml  # type: ignore
+
+            self._nvml = nvml
+            return True
+        except Exception:
+            self._import_failed = True
+            return False
+
+    def _ensure_initialized(self) -> bool:
+        if not self._import_nvml():
+            return False
+        if self._initialized:
+            return True
+
+        assert self._nvml is not None
+        try:
+            self._nvml.nvmlInit()
+        except Exception as exc:  # pragma: no cover - depends on local NVML state
+            if exc.__class__.__name__ != "NVMLError_AlreadyInitialized":
+                return False
+        self._initialized = True
+        return True
+
+    def _decode_text(self, value: Any) -> str | None:
+        if isinstance(value, bytes):
+            try:
+                value = value.decode("utf-8", errors="replace")
+            except Exception:
+                return None
+        return normalize_text(value)
+
+    def available(self) -> bool:
+        if not self._ensure_initialized():
+            return False
+
+        assert self._nvml is not None
+        try:
+            return self._nvml.nvmlDeviceGetCount() > 0
+        except Exception:
+            return False
+
+    def devices(self) -> list[Any]:
+        if not self._ensure_initialized():
+            return []
+
+        assert self._nvml is not None
+        handles: list[Any] = []
+        try:
+            count = self._nvml.nvmlDeviceGetCount()
+        except Exception:
+            return []
+
+        for vendor_index in range(count):
+            try:
+                handle = self._nvml.nvmlDeviceGetHandleByIndex(vendor_index)
+                handles.append((vendor_index, handle))
+            except Exception:
+                continue
+        return handles
+
+    def info(self, device: Any, index: int) -> GPUInfo:
+        vendor_index, handle = device
+        driver = None
+        name = f"NVIDIA GPU {vendor_index}"
+        uuid = None
+        memory_total = None
+
+        assert self._nvml is not None
+        try:
+            name = self._decode_text(self._nvml.nvmlDeviceGetName(handle)) or name
+        except Exception:
+            pass
+
+        try:
+            uuid = normalize_uuid(self._nvml.nvmlDeviceGetUUID(handle))
+        except Exception:
+            pass
+
+        try:
+            driver = self._decode_text(self._nvml.nvmlSystemGetDriverVersion())
+        except Exception:
+            pass
+
+        try:
+            memory_info = self._nvml.nvmlDeviceGetMemoryInfo(handle)
+            memory_total = normalize_bytes(memory_info.total)
+        except Exception:
+            pass
+
+        return GPUInfo(
+            index=index,
+            vendor=self.vendor,
+            name=name,
+            uuid=uuid,
+            driver=driver,
+            memory_total_bytes=memory_total,
+        )
+
+    def metrics(self, device: Any, index: int) -> GPUMetrics:
+        _, handle = device
+        timestamp_ns = time.time_ns()
+
+        utilization = None
+        memory_used = None
+        memory_total = None
+        temperature = None
+        power_w = None
+        core_clock = None
+        memory_clock = None
+
+        assert self._nvml is not None
+
+        try:
+            util = self._nvml.nvmlDeviceGetUtilizationRates(handle)
+            utilization = normalize_percent(util.gpu)
+        except Exception:
+            pass
+
+        try:
+            memory_info = self._nvml.nvmlDeviceGetMemoryInfo(handle)
+            memory_used = normalize_bytes(memory_info.used)
+            memory_total = normalize_bytes(memory_info.total)
+        except Exception:
+            pass
+
+        try:
+            temperature = normalize_temperature_c(
+                self._nvml.nvmlDeviceGetTemperature(handle, self._nvml.NVML_TEMPERATURE_GPU),
+                unit="auto",
+            )
+        except Exception:
+            pass
+
+        try:
+            power_w = normalize_power_w(self._nvml.nvmlDeviceGetPowerUsage(handle), unit="mw")
+        except Exception:
+            pass
+
+        try:
+            core_clock = normalize_clock_mhz(
+                self._nvml.nvmlDeviceGetClockInfo(handle, self._nvml.NVML_CLOCK_SM)
+            )
+        except Exception:
+            pass
+
+        try:
+            memory_clock = normalize_clock_mhz(
+                self._nvml.nvmlDeviceGetClockInfo(handle, self._nvml.NVML_CLOCK_MEM)
+            )
+        except Exception:
+            pass
+
+        return GPUMetrics(
+            index=index,
+            utilization_percent=utilization,
+            memory_used_bytes=memory_used,
+            memory_total_bytes=memory_total,
+            temperature_c=temperature,
+            power_w=power_w,
+            core_clock_mhz=core_clock,
+            memory_clock_mhz=memory_clock,
+            timestamp_ns=timestamp_ns,
+        )
+
+    def close(self) -> None:
+        if not self._initialized or self._nvml is None:
+            return
+        try:
+            self._nvml.nvmlShutdown()
+        except Exception:
+            pass
+        self._initialized = False

@@ -1,14 +1,19 @@
-"""Unified GPU Monitoring and Observability Layer."""
+"""Omnismi: unified, minimal GPU observability API."""
 
-from omnismi.core.detector import detect_gpus
-from omnismi.core.device import GPUDevice
-from omnismi.types import GPUInfo, GPUMetrics
+from omnismi.api import GPU, count, gpu, gpus
+from omnismi.errors import BackendError, OmnismiError, ValidationError
+from omnismi.models import GPUMetrics, GPUInfo
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 __all__ = [
-    "detect_gpus",
-    "GPUDevice",
+    "BackendError",
+    "GPU",
     "GPUInfo",
     "GPUMetrics",
+    "OmnismiError",
+    "ValidationError",
+    "count",
+    "gpu",
+    "gpus",
 ]

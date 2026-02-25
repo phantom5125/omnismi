@@ -52,3 +52,7 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Docs
+site/
+.ai/

@@ -1,0 +1,26 @@
+site_name: Omnismi
+site_description: Unified, minimal GPU observability across NVIDIA and AMD
+repo_url: https://github.com/omnismi/omnismi
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - API: api.md
+  - Compatibility: compatibility.md
+  - Validation: validation.md
+  - Roadmap: roadmap.md
+  - Development: development.md
+  - Agent Playbook: agent-playbook.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_root_heading: true
+            show_source: false
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true

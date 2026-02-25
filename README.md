@@ -1,147 +1,80 @@
 # Omnismi
 
-Unified GPU Monitoring and Observability Layer.
+Omnismi is a unified GPU observability library.
 
-## Overview
+The long-term goal is to support all major GPU vendors behind one simple Python API. NVIDIA and AMD are implemented today, and the architecture is designed for incremental backend expansion.
 
-Omnismi provides a unified API for GPU monitoring across different hardware vendors. Users no longer need to call vendor-specific libraries (pynvml, amdsmi) directly - instead, they use omnismi to detect and query GPU information in a vendor-agnostic way.
+## Install
 
-## Supported Vendors
+Omnismi core is lightweight and has no mandatory vendor dependency.
+Pick the install command that matches your environment:
 
-- NVIDIA (via pynvml)
-- AMD (via amdsmi)
-
-## Installation
-
-### Using uv (Recommended)
-
-```bash
-# Install base package (no dependencies required)
-uv pip install omnismi
-
-# Install with NVIDIA support
-uv pip install omnismi[nvidia]
-
-# Install with AMD support
-uv pip install omnismi[amd]
-
-# Install with all vendor support
-uv pip install omnismi[all]
-
-# Auto-detect hardware and install appropriate dependencies
-omnismi-install install auto
-```
-
-### Using pip
-
-```bash
-pip install omnismi
-pip install omnismi[nvidia]  # NVIDIA only
-pip install omnismi[amd]     # AMD only
-pip install omnismi[all]     # All vendors
-```
+| Your environment | What to install | Command |
+|---|---|---|
+| No GPU / CI / just developing API integration | Core package only | `pip install omnismi` |
+| NVIDIA GPUs only | Core + NVIDIA backend dependency | `pip install "omnismi[nvidia]"` |
+| AMD GPUs only | Core + AMD backend dependency | `pip install "omnismi[amd]"` |
+| Mixed cluster or shared image | Core + NVIDIA + AMD dependencies | `pip install "omnismi[all]"` |
 
 ## Quick Start
 
 ```python
-from omnismi import detect_gpus, list_gpus, get_gpu
+import omnismi as omi
 
-# Detect all GPUs
-gpus = detect_gpus()
-print(f"Found {len(gpus)} GPU(s)")
+# 1) Count GPUs
+gpu_count = omi.count()
 
-# List GPUs
-for gpu in list_gpus():
-    print(f"GPU {gpu.id}: {gpu.name} ({gpu.vendor})")
+# 2) Check whether GPU exists
+has_gpu = gpu_count > 0
 
-# Get specific GPU and its metrics
-gpu = get_gpu(0)
-metrics = gpu.get_metrics()
-print(f"Utilization: {metrics.utilization_gpu}%")
-print(f"Memory Used: {metrics.memory_used} bytes")
+# 3) Get max total GPU memory (bytes) across visible devices
+max_memory_bytes = max(
+    (dev.info().memory_total_bytes or 0 for dev in omi.gpus()),
+    default=0,
+)
+
+print(f"gpu_count={gpu_count}")
+print(f"has_gpu={has_gpu}")
+print(f"max_memory_bytes={max_memory_bytes}")
 ```
 
-## CLI Usage
+## API
 
-```bash
-# List all GPUs
-omnismi list
+- `omi.count() -> int`
+- `omi.gpus() -> list[GPU]`
+- `omi.gpu(index: int) -> GPU | None`
+- `GPU.info() -> GPUInfo`
+- `GPU.metrics() -> GPUMetrics`
 
-# Get detailed GPU info
-omnismi info 0
+## Current Support and Semantics
 
-# Monitor GPUs in real-time
-omnismi monitor
-omnismi monitor --interval 5
+| Vendor | Status | Backend dependency | Read semantics |
+|---|---|---|---|
+| NVIDIA | Supported | `nvidia-ml-py` | Read-only, normalized units, unavailable values return `None` |
+| AMD | Supported | `amdsmi` | Read-only, normalized units, unavailable values return `None` |
+| Other vendors (Intel, Apple, etc.) | Planned | TBD | Same API contract (`count/gpus/gpu`, `info/metrics`) |
 
-# Detect hardware and drivers
-omnismi-install detect
+| Metric field | Unit | Semantic |
+|---|---|---|
+| `utilization_percent` | `%` | GPU utilization percentage when available |
+| `memory_used_bytes` / `memory_total_bytes` | `bytes` | Memory usage/total in bytes |
+| `temperature_c` | `C` | Device temperature in Celsius |
+| `power_w` | `W` | Power usage in Watts |
+| `core_clock_mhz` / `memory_clock_mhz` | `MHz` | Core/memory clock when available |
 
-# Auto-install dependencies based on hardware
-omnismi-install install auto
-```
+## Roadmap (Todo)
 
-## Driver Detection
+- Extend backend coverage to more GPU vendors.
+- Improve compatibility matrix depth across drivers/runtimes/architectures.
+- Strengthen parity validation workflow and reporting.
+- Expand hardware-backed tests and reproducibility tooling.
+- Keep API minimal while improving metric quality and consistency.
 
-Omnismi can detect your CUDA/ROCm driver versions:
+## Documentation
 
-```python
-from omnismi import detection
-
-# Detect NVIDIA
-cuda_info = detection.detect_cuda()
-if cuda_info:
-    print(f"CUDA Version: {cuda_info.cuda_version}")
-    print(f"Driver Version: {cuda_info.driver_version}")
-
-# Detect AMD ROCm
-rocm_info = detection.detect_rocm()
-if rocm_info:
-    print(f"ROCm Version: {rocm_info.rocmm_version}")
-    print(f"HIP Version: {rocm_info.hip_version}")
-```
-
-## Auto-Installation
-
-If you don't know which GPU you have, use auto-detection:
-
-```bash
-# This will:
-# 1. Detect your GPU hardware
-# 2. Detect driver versions
-# 3. Install appropriate dependencies
-omnismi-install install auto
-```
-
-Or programmatically:
-
-```python
-from omnismi import installer
-
-# Check what's installed
-status = installer.check_installed()
-print(f"NVIDIA: {status['nvidia']}")
-print(f"AMD: {status['amd']}")
-
-# Auto-install based on hardware
-installer.install_auto()
-```
-
-## Development
-
-```bash
-# Install in development mode
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-
-# Type checking
-mypy src/
-
-# Formatting
-black src/ tests/
-```
+- API and usage docs: `docs/`
+- Build docs locally: `mkdocs serve`
+- Parity validation: `python -m omnismi.validation.parity --vendor nvidia --samples 3`
 
 ## License
 
