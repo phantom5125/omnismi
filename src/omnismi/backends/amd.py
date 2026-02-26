@@ -155,24 +155,33 @@ class AmdBackend(BaseBackend):
         )
 
     def _read_temperature(self, handle: Any) -> float | None:
+        """Read temperature with fallback: EDGE -> HOTSPOT -> VRAM."""
         assert self._amdsmi is not None
+
+        # Temperature types to try in order of preference
+        temp_types = ["EDGE", "HOTSPOT", "VRAM"]
 
         if (
             hasattr(self._amdsmi, "amdsmi_get_temp_metric")
             and hasattr(self._amdsmi, "AmdSmiTemperatureType")
             and hasattr(self._amdsmi, "AmdSmiTemperatureMetric")
         ):
-            sensor = getattr(self._amdsmi.AmdSmiTemperatureType, "EDGE", None)
             metric = getattr(self._amdsmi.AmdSmiTemperatureMetric, "CURRENT", None)
-            if sensor is not None and metric is not None:
-                try:
-                    return normalize_temperature_c(
-                        self._amdsmi.amdsmi_get_temp_metric(handle, sensor, metric),
-                        unit="millicelsius",
-                    )
-                except Exception:
-                    pass
+            if metric is not None:
+                for temp_type in temp_types:
+                    sensor = getattr(self._amdsmi.AmdSmiTemperatureType, temp_type, None)
+                    if sensor is not None:
+                        try:
+                            temp = normalize_temperature_c(
+                                self._amdsmi.amdsmi_get_temp_metric(handle, sensor, metric),
+                                unit="millicelsius",
+                            )
+                            if temp is not None:
+                                return temp
+                        except Exception:
+                            continue
 
+        # Fallback to legacy API
         if hasattr(self._amdsmi, "amdsmi_get_gpu_temperature"):
             try:
                 data = self._amdsmi.amdsmi_get_gpu_temperature(handle)
