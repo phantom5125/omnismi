@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 import time
 from dataclasses import replace
 from typing import Any
@@ -62,6 +63,16 @@ class GPU:
                 memory_clock_mhz=None,
                 timestamp_ns=time.time_ns(),
             )
+
+    def realtime(self):
+        """Return a context that forces live metric reads when supported by backend."""
+        mode = getattr(self._backend, "realtime_mode", None)
+        if callable(mode):
+            try:
+                return mode()
+            except Exception:
+                return nullcontext()
+        return nullcontext()
 
     def __repr__(self) -> str:
         return f"GPU(index={self._index}, vendor={self._backend.vendor!r})"

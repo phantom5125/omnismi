@@ -16,6 +16,21 @@ Pick the install command that matches your environment:
 | AMD GPUs only | Core + AMD backend dependency | `pip install "omnismi[amd]"` |
 | Mixed cluster or shared image | Core + NVIDIA + AMD dependencies | `pip install "omnismi[all]"` |
 
+### Install From Local Source
+
+```bash
+# from repo root
+python -m pip install -e ".[all]"
+```
+
+If you only need one vendor backend during local development:
+
+```bash
+python -m pip install -e ".[nvidia]"
+# or
+python -m pip install -e ".[amd]"
+```
+
 ## Quick Start
 
 ```python
@@ -45,6 +60,7 @@ print(f"max_memory_bytes={max_memory_bytes}")
 - `omi.gpu(index: int) -> GPU | None`
 - `GPU.info() -> GPUInfo`
 - `GPU.metrics() -> GPUMetrics`
+- `GPU.realtime() -> context manager` (force live reads when backend supports it)
 
 ## Current Support and Semantics
 
@@ -62,6 +78,24 @@ print(f"max_memory_bytes={max_memory_bytes}")
 | `power_w` | `W` | Power usage in Watts |
 | `core_clock_mhz` / `memory_clock_mhz` | `MHz` | Core/memory clock when available |
 
+### Sampling Semantics (NVIDIA)
+
+- Omnismi initializes NVML lazily on first NVIDIA backend use (`nvmlInit`).
+- `GPU.metrics()` is psutil-style for NVIDIA: repeated calls return the latest cached sample instead of reading NVML every call.
+- A background sampler refreshes cached metrics periodically (default 0.5s interval).
+- On process exit or backend teardown, Omnismi calls `nvmlShutdown()`.
+
+Use realtime mode only when you explicitly need per-call direct reads:
+
+```python
+import omnismi as omi
+
+dev = omi.gpu(0)
+if dev is not None:
+    with dev.realtime():
+        live = dev.metrics()  # bypass cache for this call path
+```
+
 ## Roadmap (Todo)
 
 - Extend backend coverage to more GPU vendors.
@@ -75,6 +109,17 @@ print(f"max_memory_bytes={max_memory_bytes}")
 - API and usage docs: `docs/`
 - Build docs locally: `mkdocs serve`
 - Parity validation: `python -m omnismi.validation.parity --vendor nvidia --samples 3`
+
+## Local Validation
+
+```bash
+# run unit tests
+PYTHONPATH=src pytest -q
+
+# compare normalized output against direct vendor API
+PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3
+PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3
+```
 
 ## License
 
