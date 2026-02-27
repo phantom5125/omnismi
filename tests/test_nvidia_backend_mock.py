@@ -14,6 +14,7 @@ class _FakeNVML:
 
     def __init__(self) -> None:
         self.shutdown_called = False
+        self.utilization_calls = 0
 
     def nvmlInit(self) -> None:
         return None
@@ -42,6 +43,7 @@ class _FakeNVML:
         return SimpleNamespace(total=80 * 1024**3, used=4 * 1024**3)
 
     def nvmlDeviceGetUtilizationRates(self, handle: str):
+        self.utilization_calls += 1
         return SimpleNamespace(gpu=77)
 
     def nvmlDeviceGetTemperature(self, handle: str, sensor: int) -> int:
@@ -80,3 +82,26 @@ def test_nvidia_backend_reads_expected_fields(monkeypatch) -> None:
 
     backend.close()
     assert fake_nvml.shutdown_called is True
+
+
+def test_nvidia_backend_metrics_cache_and_realtime_mode(monkeypatch) -> None:
+    fake_nvml = _FakeNVML()
+    monkeypatch.setitem(__import__("sys").modules, "pynvml", fake_nvml)
+
+    backend = NvidiaBackend(sample_interval_s=60.0)
+    devices = backend.devices()
+    assert len(devices) == 1
+
+    _ = backend.metrics(devices[0], index=0)
+    _ = backend.metrics(devices[0], index=0)
+    assert fake_nvml.utilization_calls == 1
+
+    with backend.realtime_mode():
+        _ = backend.metrics(devices[0], index=0)
+        _ = backend.metrics(devices[0], index=0)
+    assert fake_nvml.utilization_calls == 3
+
+    _ = backend.metrics(devices[0], index=0)
+    assert fake_nvml.utilization_calls == 3
+
+    backend.close()
