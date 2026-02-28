@@ -1,8 +1,48 @@
 # Omnismi
 
-Omnismi is a unified GPU observability library.
+Cross-vendor GPU observability for AI agents and Python apps (NVIDIA and AMD today).
 
-The long-term goal is to support all major GPU vendors behind one simple Python API. NVIDIA and AMD are implemented today, and the architecture is designed for incremental backend expansion.
+Omnismi provides a compact and stable Python API for reading GPU information and metrics across vendors.
+The long-term goal is broader vendor coverage without changing user-facing API contracts.
+
+## Why Omnismi
+
+- Unified API across vendors: `count`, `gpus`, `gpu`, `info`, `metrics`.
+- Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
+- Graceful degradation: unavailable metrics return `None` instead of raising by default.
+- NVIDIA psutil-style cached sampling plus `GPU.realtime()` for forced live reads.
+- Built-in parity checker to compare normalized output with direct vendor readings.
+
+## Why not just torch/pynvml/amdsmi?
+
+PyTorch memory APIs are useful in framework workflows, but are framework-scoped and not designed as a
+cross-vendor observability contract for general runtime checks. Direct vendor bindings are essential,
+but each has different lifecycle, naming, and compatibility details. Omnismi adds a stable cross-vendor
+contract for agent preflight and application telemetry. See [docs/why-omnismi.md](docs/why-omnismi.md).
+
+## Adapter Matrix (Ground Truth Libraries)
+
+| Vendor | Runtime/Driver Stack | Ground Truth Library | Router Status |
+|---|---|---|---|
+| NVIDIA | CUDA + NVML | `nvidia-ml-py` | ✅ Supported |
+| AMD | ROCm + AMD SMI | `amdsmi` | ✅ Supported |
+| Intel | oneAPI + Level Zero | TBD | ⬜ Planned |
+| Apple | Metal | TBD | ⬜ Planned |
+
+Status legend:
+- `✅ Supported`: Adapter path is integrated and maintained.
+- `🟡 Partial`: Adapter is integrated but some metrics/features are incomplete.
+- `🧪 Awaiting User Validation`: Adapter path exists; model/version evidence is still needed.
+- `⬜ Planned`: Vendor adapter is not integrated yet.
+
+## Hardware Validation Status
+
+| Vendor | Model | Status | Evidence |
+|---|---|---|---|
+| NVIDIA | H20 | ✅ Verified | [v1.0.0 release note](CHANGELOG.md#100---2026-02-25) |
+| AMD | MI300X | ✅ Verified | [v1.0.0 release note](CHANGELOG.md#100---2026-02-25) |
+
+See full matrix in [docs/compatibility.md](docs/compatibility.md).
 
 ## Install
 

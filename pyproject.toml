@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "omnismi"
 version = "1.0.0"
-description = "Unified, minimal GPU observability across NVIDIA and AMD"
+description = "Cross-vendor GPU observability for AI agents and Python apps (NVIDIA and AMD today)"
+keywords = ["gpu", "cross-vendor", "nvidia", "amd", "observability", "ai-agent"]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
