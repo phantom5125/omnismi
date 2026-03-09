@@ -1,5 +1,9 @@
 # Omnismi
 
+<p align="center">
+  <img src="assets/OMNIsmi.svg" alt="Omnismi logo" width="300" />
+</p>
+
 Omnismi provides one compact API for reading GPU information and metrics across vendors.
 
 ## Design goals

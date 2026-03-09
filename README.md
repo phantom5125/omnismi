@@ -1,7 +1,10 @@
 # Omnismi
 
-Cross-vendor GPU observability for AI agents and Python apps (NVIDIA and AMD today).
+<p align="center">
+  <img src="docs/assets/OMNIsmi.svg" alt="Omnismi logo" width="320" />
+</p>
 
+Cross-vendor GPU observability for AI agents and Python scripts (NVIDIA and AMD for now).
 Omnismi provides a compact and stable Python API for reading GPU information and metrics across vendors.
 The long-term goal is broader vendor coverage without changing user-facing API contracts.
 

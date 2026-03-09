@@ -3,6 +3,8 @@ site_description: Cross-vendor GPU observability for AI agents and Python apps
 repo_url: https://github.com/omnismi/omnismi
 theme:
   name: material
+  logo: assets/OMNIsmi.svg
+  favicon: assets/OMNIsmi.svg
 nav:
   - Home: index.md
   - Why Omnismi: why-omnismi.md
