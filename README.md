@@ -8,12 +8,61 @@ Cross-vendor GPU observability for AI agents and Python scripts (NVIDIA and AMD 
 Omnismi provides a compact and stable Python API for reading GPU information and metrics across vendors.
 The long-term goal is broader vendor coverage without changing user-facing API contracts.
 
+## Quick Start
+
+```python
+import omnismi as omi
+
+# 1) Count GPUs
+gpu_count = omi.count()
+
+# 2) Check whether GPU exists
+has_gpu = gpu_count > 0
+
+# 3) Get max total GPU memory (bytes) across visible devices
+max_memory_bytes = max(
+    (dev.info().memory_total_bytes or 0 for dev in omi.gpus()),
+    default=0,
+)
+
+print(f"gpu_count={gpu_count}")
+print(f"has_gpu={has_gpu}")
+print(f"max_memory_bytes={max_memory_bytes}")
+```
+
+## Install
+
+Omnismi core is lightweight and has no mandatory vendor dependency.
+Pick the install command that matches your environment:
+
+| Your environment | What to install | Command |
+|---|---|---|
+| No GPU / CI / just developing API integration | Core package only | `pip install omnismi` |
+| NVIDIA GPUs only | Core + NVIDIA backend dependency | `pip install "omnismi[nvidia]"` |
+| AMD GPUs only | Core + AMD backend dependency | `pip install "omnismi[amd]"` |
+| Mixed cluster or shared image | Core + NVIDIA + AMD dependencies | `pip install "omnismi[all]"` |
+
+### Install From Local Source
+
+```bash
+# from repo root
+python -m pip install -e ".[all]"
+```
+
+If you only need one vendor backend during local development:
+
+```bash
+python -m pip install -e ".[nvidia]"
+# or
+python -m pip install -e ".[amd]"
+```
+
 ## Why Omnismi
 
 - Unified API across vendors: `count`, `gpus`, `gpu`, `info`, `metrics`.
 - Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
 - Graceful degradation: unavailable metrics return `None` instead of raising by default.
-- NVIDIA psutil-style cached sampling plus `GPU.realtime()` for forced live reads.
+- NVIDIA and AMD both support psutil-style cached sampling plus `GPU.realtime()` for forced live reads.
 - Built-in parity checker to compare normalized output with direct vendor readings.
 
 ## Why not just torch/pynvml/amdsmi?
@@ -47,55 +96,6 @@ Status legend:
 
 See full matrix in [docs/compatibility.md](docs/compatibility.md).
 
-## Install
-
-Omnismi core is lightweight and has no mandatory vendor dependency.
-Pick the install command that matches your environment:
-
-| Your environment | What to install | Command |
-|---|---|---|
-| No GPU / CI / just developing API integration | Core package only | `pip install omnismi` |
-| NVIDIA GPUs only | Core + NVIDIA backend dependency | `pip install "omnismi[nvidia]"` |
-| AMD GPUs only | Core + AMD backend dependency | `pip install "omnismi[amd]"` |
-| Mixed cluster or shared image | Core + NVIDIA + AMD dependencies | `pip install "omnismi[all]"` |
-
-### Install From Local Source
-
-```bash
-# from repo root
-python -m pip install -e ".[all]"
-```
-
-If you only need one vendor backend during local development:
-
-```bash
-python -m pip install -e ".[nvidia]"
-# or
-python -m pip install -e ".[amd]"
-```
-
-## Quick Start
-
-```python
-import omnismi as omi
-
-# 1) Count GPUs
-gpu_count = omi.count()
-
-# 2) Check whether GPU exists
-has_gpu = gpu_count > 0
-
-# 3) Get max total GPU memory (bytes) across visible devices
-max_memory_bytes = max(
-    (dev.info().memory_total_bytes or 0 for dev in omi.gpus()),
-    default=0,
-)
-
-print(f"gpu_count={gpu_count}")
-print(f"has_gpu={has_gpu}")
-print(f"max_memory_bytes={max_memory_bytes}")
-```
-
 ## API
 
 - `omi.count() -> int`
@@ -109,24 +109,29 @@ print(f"max_memory_bytes={max_memory_bytes}")
 
 | Vendor | Status | Backend dependency | Read semantics |
 |---|---|---|---|
-| NVIDIA | Supported | `nvidia-ml-py` | Read-only, normalized units, unavailable values return `None` |
-| AMD | Supported | `amdsmi` | Read-only, normalized units, unavailable values return `None` |
+| NVIDIA | Supported | `nvidia-ml-py` | Read-only, normalized units, cached by default, `GPU.realtime()` available |
+| AMD | Supported | `amdsmi` | Read-only, normalized units, cached by default, `GPU.realtime()` available |
 | Other vendors (Intel, Apple, etc.) | Planned | TBD | Same API contract (`count/gpus/gpu`, `info/metrics`) |
 
 | Metric field | Unit | Semantic |
 |---|---|---|
-| `utilization_percent` | `%` | GPU utilization percentage when available |
+| `utilization_percent` | `%` | Vendor-reported primary compute/graphics engine activity percentage when available |
 | `memory_used_bytes` / `memory_total_bytes` | `bytes` | Memory usage/total in bytes |
 | `temperature_c` | `C` | Device temperature in Celsius |
 | `power_w` | `W` | Power usage in Watts |
 | `core_clock_mhz` / `memory_clock_mhz` | `MHz` | Core/memory clock when available |
 
-### Sampling Semantics (NVIDIA)
+`utilization_percent` is intentionally a cross-vendor activity signal. It is not an SM occupancy field on
+NVIDIA or a CU occupancy field on AMD. Today Omnismi maps it to the closest top-level vendor activity metric
+available, which is NVML `gpu` utilization for NVIDIA and `gfx_activity` / `gpu_util` for AMD.
 
-- Omnismi initializes NVML lazily on first NVIDIA backend use (`nvmlInit`).
-- `GPU.metrics()` is psutil-style for NVIDIA: repeated calls return the latest cached sample instead of reading NVML every call.
+### Sampling Semantics (NVIDIA and AMD)
+
+- Omnismi initializes vendor libraries lazily on first backend use.
+- `GPU.metrics()` is psutil-style for both NVIDIA and AMD: repeated calls return the latest cached sample instead of forcing a direct vendor read every time.
 - A background sampler refreshes cached metrics periodically (default 0.5s interval).
-- On process exit or backend teardown, Omnismi calls `nvmlShutdown()`.
+- `GPU.realtime()` bypasses the cache and forces direct reads when the backend supports realtime mode. NVIDIA and AMD both implement it.
+- On process exit or backend teardown, Omnismi stops the sampler and closes the vendor library.
 
 Use realtime mode only when you explicitly need per-call direct reads:
 
