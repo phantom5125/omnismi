@@ -1,0 +1,67 @@
+Omnismi Project Spec
+====================
+
+Project type
+- Omnismi is a Python library, not a web app or long-running service.
+- Anthropic-style harness rules still apply, but `init.sh` should bootstrap the package and run validation instead of starting a server.
+
+Product goal
+- Provide a compact, stable, cross-vendor accelerator observability API for AI agents and Python applications.
+- Current in-scope accelerators are NVIDIA GPUs, AMD GPUs, and experimental Google TPUs.
+- Long-term expansion should add more vendors without breaking the public API contract.
+
+Primary users
+- Coding agents that need portable accelerator preflight checks.
+- Python applications that need normalized accelerator inventory and metrics.
+- Contributors validating vendor/runtime parity against ground-truth libraries.
+
+Current public contract
+- Top-level API: `omnismi.count()`, `omnismi.gpus()`, `omnismi.gpu(index)`.
+- Device object: `GPU.index`, `GPU.info()`, `GPU.metrics()`, `GPU.realtime()`.
+- Public models: `GPUInfo`, `GPUMetrics`.
+- Supported public vendors today: `nvidia`, `amd`, `google`.
+- `GPU` / `gpus()` names are historical API names and currently also cover the experimental Google TPU backend.
+
+Public model fields
+- `GPUInfo`: `index`, `vendor`, `name`, `uuid`, `driver`, `memory_total_bytes`.
+- `GPUMetrics`: `index`, `utilization_percent`, `memory_used_bytes`, `memory_total_bytes`, `temperature_c`, `power_w`, `core_clock_mhz`, `memory_clock_mhz`, `timestamp_ns`.
+
+Hard invariants
+- Public API names stay minimal and stable. Do not introduce `get_*` aliases.
+- `utilization_percent` means vendor-reported top-level compute/graphics engine activity. Do not relabel it as SM occupancy or CU occupancy.
+- Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
+- Unavailable metrics default to `None` instead of raising in normal user flows.
+- Backend-specific exceptions must not leak through the default public API path.
+- Backend implementation details stay out of user-facing API docs unless required for compatibility notes.
+- Vendor onboarding must preserve the existing `count/gpus/gpu` and `info/metrics` contract.
+
+Current backend behavior
+- NVIDIA uses `nvidia-ml-py` (`pynvml`) and supports cached psutil-style sampling plus `GPU.realtime()` for forced live reads.
+- AMD uses `amdsmi` with compatibility fallbacks for handle discovery, temperature, power, and clocks, plus cached psutil-style sampling and `GPU.realtime()`.
+- Google TPU uses `libtpu.sdk.tpumonitoring` for local snapshot metrics such as duty cycle and HBM usage. Temperature, power, clocks, and parity tooling are still unavailable.
+- The backend registry instantiates known backends lazily, filters unavailable ones, and closes them at process exit.
+
+Validation contract
+- Baseline automated check: `PYTHONPATH=src pytest -q`.
+- Import/build smoke check: `python -m compileall src tests`.
+- Optional hardware parity checks:
+  - `PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3`
+  - `PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3`
+- Public-facing changes must update tests and docs in the same session.
+
+Current non-goals
+- Reintroducing runtime dependency installers or legacy 0.x APIs.
+- Expanding the public API with scheduler/framework-specific helpers before the core contract is stable.
+- Hiding platform/runtime limitations behind fake values.
+
+Planned frontier
+- More hardware validation evidence for existing NVIDIA and AMD adapters.
+- Better backend diagnostics and debug visibility.
+- Future Intel/Apple adapter work.
+- Possible later review of scheduler/runtime integration helpers after the core observability layer is mature.
+
+Session workflow
+- Start by reading `app_spec.txt`, `feature_list.json`, `claude-progress.txt`, and `docs/agent-playbook.md`.
+- Run `./init.sh` before making changes unless there is a clear reason not to.
+- Prefer one discrete feature or validation item per session.
+- When work is done, update `feature_list.json` status/evidence, append a short note to `claude-progress.txt`, and keep tests green.

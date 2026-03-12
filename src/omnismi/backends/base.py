@@ -1,4 +1,4 @@
-"""Base backend contract for vendor-specific GPU implementations."""
+"""Base backend contract for vendor-specific accelerator implementations."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from omnismi.models import GPUMetrics, GPUInfo, VendorName
 
 
 class BaseBackend(ABC):
-    """Abstract interface implemented by all GPU vendor backends."""
+    """Abstract interface implemented by all accelerator vendor backends."""
 
     vendor: VendorName
 

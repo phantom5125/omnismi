@@ -18,6 +18,7 @@ class _FakeAMDSMI:
 
     def __init__(self) -> None:
         self.shutdown_called = False
+        self.utilization_calls = 0
 
     def amdsmi_init(self) -> None:
         return None
@@ -46,6 +47,7 @@ class _FakeAMDSMI:
         }
 
     def amdsmi_get_gpu_activity(self, handle):
+        self.utilization_calls += 1
         return {
             "gfx_activity": 70,
         }
@@ -90,3 +92,26 @@ def test_amd_backend_reads_expected_fields(monkeypatch) -> None:
 
     backend.close()
     assert fake_amdsmi.shutdown_called is True
+
+
+def test_amd_backend_metrics_cache_and_realtime_mode(monkeypatch) -> None:
+    fake_amdsmi = _FakeAMDSMI()
+    monkeypatch.setitem(__import__("sys").modules, "amdsmi", fake_amdsmi)
+
+    backend = AmdBackend(sample_interval_s=60.0)
+    devices = backend.devices()
+    assert len(devices) == 1
+
+    _ = backend.metrics(devices[0], index=0)
+    _ = backend.metrics(devices[0], index=0)
+    assert fake_amdsmi.utilization_calls == 1
+
+    with backend.realtime_mode():
+        _ = backend.metrics(devices[0], index=0)
+        _ = backend.metrics(devices[0], index=0)
+    assert fake_amdsmi.utilization_calls == 3
+
+    _ = backend.metrics(devices[0], index=0)
+    assert fake_amdsmi.utilization_calls == 3
+
+    backend.close()

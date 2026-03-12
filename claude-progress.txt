@@ -1,0 +1,17 @@
+# Omnismi Progress Log
+
+Session checklist
+- Read `app_spec.txt`, `feature_list.json`, and `docs/agent-playbook.md`.
+- Run `./init.sh` to refresh the editable install and baseline checks.
+- Prefer one small feature, validation task, or contract-tightening change per session.
+- Update both this file and `feature_list.json` before finishing.
+
+Open issues
+- Real hardware validation is still sparse beyond NVIDIA H20 and AMD MI300X.
+- `mkdocs` content exists, but docs build verification is not yet part of the default automated harness.
+- Future vendor expansion must preserve the current minimal API shape.
+
+Entries
+- 2026-03-12: Bootstrapped an Anthropic-style long-running agent harness for this repo. Added `app_spec.txt`, `feature_list.json`, `init.sh`, and documented the workflow in agent/development docs. Baseline checks passed with `PYTHONPATH=src pytest -q` and `python -m compileall src tests`.
+- 2026-03-12: Added AMD cached sampling and `GPU.realtime()` parity with the NVIDIA backend, documented `utilization_percent` as a cross-vendor activity signal instead of SM/CU occupancy, and moved the README quick start closer to the top. Validation passed with `PYTHONPATH=src pytest -q` and `python -m compileall src tests`.
+- 2026-03-12: Added an experimental Google TPU backend based on `libtpu.sdk.tpumonitoring`, updated install/docs/compatibility metadata, and recorded the current limitation that TPU has snapshot metrics but no direct parity collector yet.

@@ -1,4 +1,4 @@
-"""Omnismi: unified, minimal GPU observability API."""
+"""Omnismi: unified, minimal accelerator observability API."""
 
 from omnismi.api import GPU, count, gpu, gpus
 from omnismi.errors import BackendError, OmnismiError, ValidationError

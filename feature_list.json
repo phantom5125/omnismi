@@ -1,0 +1,1080 @@
+{
+  "project": "omnismi",
+  "updated_at": "2026-03-12",
+  "harness_version": 1,
+  "bootstrap_command": "./init.sh",
+  "read_first": [
+    "app_spec.txt",
+    "feature_list.json",
+    "claude-progress.txt",
+    "docs/agent-playbook.md"
+  ],
+  "selection_guidance": [
+    "Prefer one discrete feature per session.",
+    "Prioritize items with status `planned` or `awaiting_validation`.",
+    "If you harden an existing behavior, add or tighten automated tests and mark the item `verified`.",
+    "Update this file and `claude-progress.txt` before closing a session."
+  ],
+  "status_legend": {
+    "verified": "Implemented and backed by tests or documented validation evidence.",
+    "implemented": "Implemented in code/docs but missing direct coverage or stronger evidence.",
+    "awaiting_validation": "Adapter path exists, but real hardware or manual evidence is still missing.",
+    "planned": "Not implemented yet."
+  },
+  "verification_commands": {
+    "tests": "PYTHONPATH=src pytest -q",
+    "compile": "python -m compileall src tests",
+    "parity_nvidia": "PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3",
+    "parity_amd": "PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3",
+    "docs": "mkdocs build --strict"
+  },
+  "features": [
+    {
+      "id": "harness-app-spec",
+      "area": "harness",
+      "status": "verified",
+      "title": "Root project spec exists for long-running sessions",
+      "description": "The repo keeps a concise root-level spec describing goals, invariants, non-goals, and session workflow.",
+      "verification": [
+        "Review app_spec.txt for public contract, validation commands, and session rules."
+      ],
+      "source_of_truth": [
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "harness-feature-catalog",
+      "area": "harness",
+      "status": "verified",
+      "title": "Feature catalog exists as JSON",
+      "description": "The repo keeps a machine-readable feature inventory with statuses, evidence, and verification commands.",
+      "verification": [
+        "python -m json.tool feature_list.json > /dev/null"
+      ],
+      "source_of_truth": [
+        "feature_list.json"
+      ]
+    },
+    {
+      "id": "harness-bootstrap-script",
+      "area": "harness",
+      "status": "verified",
+      "title": "Bootstrap script validates the repo for agent sessions",
+      "description": "A root-level script refreshes the editable install, runs import smoke checks, and executes the baseline test suite.",
+      "verification": [
+        "./init.sh"
+      ],
+      "source_of_truth": [
+        "init.sh"
+      ]
+    },
+    {
+      "id": "harness-progress-log",
+      "area": "harness",
+      "status": "verified",
+      "title": "Session progress log is persisted in the repo",
+      "description": "A root-level progress log captures completed sessions, open issues, and the expected workflow.",
+      "verification": [
+        "Review claude-progress.txt for checklist, open issues, and dated entries."
+      ],
+      "source_of_truth": [
+        "claude-progress.txt"
+      ]
+    },
+    {
+      "id": "harness-agent-playbook-wired",
+      "area": "harness",
+      "status": "verified",
+      "title": "Existing agent playbook references the harness files",
+      "description": "Contributor guidance points agents to the root harness files and session loop.",
+      "verification": [
+        "Review docs/agent-playbook.md."
+      ],
+      "source_of_truth": [
+        "docs/agent-playbook.md"
+      ]
+    },
+    {
+      "id": "package-core-install-without-vendor-deps",
+      "area": "packaging",
+      "status": "implemented",
+      "title": "Core package installs without mandatory vendor dependencies",
+      "description": "Base `omnismi` installs without `pynvml`, `amdsmi`, or `libtpu` so CI and CPU-only users can integrate the API.",
+      "verification": [
+        "Inspect `[project].dependencies` in pyproject.toml."
+      ],
+      "source_of_truth": [
+        "pyproject.toml",
+        "README.md"
+      ]
+    },
+    {
+      "id": "package-extra-nvidia",
+      "area": "packaging",
+      "status": "implemented",
+      "title": "NVIDIA extra installs NVML bindings",
+      "description": "The `nvidia` extra exposes `nvidia-ml-py` for NVIDIA environments.",
+      "verification": [
+        "Inspect `[project.optional-dependencies].nvidia` in pyproject.toml."
+      ],
+      "source_of_truth": [
+        "pyproject.toml",
+        "README.md"
+      ]
+    },
+    {
+      "id": "package-extra-amd",
+      "area": "packaging",
+      "status": "implemented",
+      "title": "AMD extra installs AMD SMI bindings",
+      "description": "The `amd` extra exposes `amdsmi` for ROCm environments.",
+      "verification": [
+        "Inspect `[project.optional-dependencies].amd` in pyproject.toml."
+      ],
+      "source_of_truth": [
+        "pyproject.toml",
+        "README.md"
+      ]
+    },
+    {
+      "id": "package-extra-all",
+      "area": "packaging",
+      "status": "implemented",
+      "title": "Combined extra installs all supported accelerator backends",
+      "description": "The `all` extra installs `nvidia-ml-py`, `amdsmi`, and `libtpu` for mixed environments.",
+      "verification": [
+        "Inspect `[project.optional-dependencies].all` in pyproject.toml."
+      ],
+      "source_of_truth": [
+        "pyproject.toml",
+        "README.md"
+      ]
+    },
+    {
+      "id": "package-extra-tpu",
+      "area": "packaging",
+      "status": "implemented",
+      "title": "TPU extra installs libtpu",
+      "description": "The `tpu` extra exposes `libtpu` for Google TPU environments.",
+      "verification": [
+        "Inspect `[project.optional-dependencies].tpu` in pyproject.toml."
+      ],
+      "source_of_truth": [
+        "pyproject.toml",
+        "README.md"
+      ]
+    },
+    {
+      "id": "public-exports-no-get-prefix",
+      "area": "public_api",
+      "status": "verified",
+      "title": "Public API exports stay minimal and avoid `get_*` names",
+      "description": "The top-level contract is centered on `count`, `gpus`, and `gpu` with no legacy getter aliases.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_api_contract.py -k public_exports"
+      ],
+      "source_of_truth": [
+        "src/omnismi/__init__.py",
+        "tests/test_api_contract.py",
+        "docs/agent-playbook.md"
+      ]
+    },
+    {
+      "id": "public-count-visible-gpus",
+      "area": "public_api",
+      "status": "verified",
+      "title": "count() returns the number of visible GPUs",
+      "description": "The top-level count reflects the number of GPUs surfaced through active backends.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_api_contract.py -k count_gpus"
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "tests/test_api_contract.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "public-gpus-global-order",
+      "area": "public_api",
+      "status": "verified",
+      "title": "gpus() returns globally indexed GPU objects",
+      "description": "Devices returned from all active backends are wrapped as `GPU` objects with stable global indexes.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_api_contract.py -k count_gpus"
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "tests/test_api_contract.py"
+      ]
+    },
+    {
+      "id": "public-gpu-index-lookup",
+      "area": "public_api",
+      "status": "verified",
+      "title": "gpu(index) returns a device or None",
+      "description": "Negative or out-of-range indexes return `None` instead of raising.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_api_contract.py -k count_gpus"
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "tests/test_api_contract.py"
+      ]
+    },
+    {
+      "id": "gpu-info-returns-model",
+      "area": "public_api",
+      "status": "verified",
+      "title": "GPU.info() returns GPUInfo",
+      "description": "Static device info is exposed as the frozen public `GPUInfo` dataclass.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_api_contract.py -k gpu_methods"
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "src/omnismi/models.py",
+        "tests/test_api_contract.py"
+      ]
+    },
+    {
+      "id": "gpu-info-graceful-fallback",
+      "area": "public_api",
+      "status": "implemented",
+      "title": "GPU.info() degrades gracefully on backend errors",
+      "description": "If backend info collection fails, Omnismi returns a partial `GPUInfo` instead of surfacing vendor exceptions.",
+      "verification": [
+        "Inspect exception handling in GPU.info() and add direct tests if behavior changes."
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "docs/development.md"
+      ]
+    },
+    {
+      "id": "gpu-metrics-returns-model",
+      "area": "public_api",
+      "status": "verified",
+      "title": "GPU.metrics() returns GPUMetrics",
+      "description": "Dynamic device metrics are exposed as the frozen public `GPUMetrics` dataclass.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_api_contract.py -k gpu_methods"
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "src/omnismi/models.py",
+        "tests/test_api_contract.py"
+      ]
+    },
+    {
+      "id": "gpu-metrics-graceful-fallback",
+      "area": "public_api",
+      "status": "implemented",
+      "title": "GPU.metrics() degrades gracefully on backend errors",
+      "description": "If backend metric collection fails, Omnismi returns a partial metrics object with nullable fields and a fresh timestamp.",
+      "verification": [
+        "Inspect exception handling in GPU.metrics() and add direct tests if behavior changes."
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "docs/development.md"
+      ]
+    },
+    {
+      "id": "gpu-realtime-null-safe",
+      "area": "public_api",
+      "status": "implemented",
+      "title": "GPU.realtime() falls back to a no-op context manager when unsupported",
+      "description": "Backends that do not implement realtime mode should not break user code.",
+      "verification": [
+        "Inspect GPU.realtime() fallback behavior in src/omnismi/api.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py"
+      ]
+    },
+    {
+      "id": "utilization-percent-cross-vendor-semantics",
+      "area": "public_api",
+      "status": "implemented",
+      "title": "utilization_percent has stable cross-vendor activity semantics",
+      "description": "The public `utilization_percent` field means vendor-reported top-level compute or graphics engine activity, not SM occupancy on NVIDIA or CU occupancy on AMD.",
+      "verification": [
+        "Review README.md and app_spec.txt."
+      ],
+      "source_of_truth": [
+        "src/omnismi/models.py",
+        "README.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "models-frozen-slotted",
+      "area": "public_api",
+      "status": "implemented",
+      "title": "Public models remain frozen slotted dataclasses",
+      "description": "The public data contract uses immutable slotted dataclasses for predictable shape and low overhead.",
+      "verification": [
+        "Inspect dataclass declarations in src/omnismi/models.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/models.py"
+      ]
+    },
+    {
+      "id": "registry-default-backends",
+      "area": "backend_registry",
+      "status": "implemented",
+      "title": "Registry keeps NVIDIA and AMD as default backends",
+      "description": "The default backend factory list initializes NVIDIA first and AMD second.",
+      "verification": [
+        "Inspect `_DEFAULT_FACTORIES` in src/omnismi/backends/registry.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/registry.py"
+      ]
+    },
+    {
+      "id": "registry-filter-available",
+      "area": "backend_registry",
+      "status": "verified",
+      "title": "active_backends() filters unavailable backends",
+      "description": "Unavailable backends are ignored instead of causing user-visible errors.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_backend_registry.py -k active_backends"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/registry.py",
+        "tests/test_backend_registry.py"
+      ]
+    },
+    {
+      "id": "registry-close-all-reset",
+      "area": "backend_registry",
+      "status": "verified",
+      "title": "close_all() closes instantiated backends and resets the cache",
+      "description": "Backend shutdown is centralized so long-lived processes can reset adapter state safely.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_backend_registry.py -k close_all"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/registry.py",
+        "tests/test_backend_registry.py"
+      ]
+    },
+    {
+      "id": "normalize-text-na-sentinels",
+      "area": "normalization",
+      "status": "implemented",
+      "title": "normalize_text() treats common NA strings as missing values",
+      "description": "String, bytes, and wrapped values normalize cleanly and collapse known NA sentinels to `None`.",
+      "verification": [
+        "Inspect normalize_text(), normalize_uuid(), and helper functions in src/omnismi/normalize.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/normalize.py"
+      ]
+    },
+    {
+      "id": "normalize-bytes-nonnegative",
+      "area": "normalization",
+      "status": "verified",
+      "title": "normalize_bytes() rejects invalid or negative memory values",
+      "description": "Memory values normalize to integer bytes or `None` when invalid.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_normalization.py -k bytes"
+      ],
+      "source_of_truth": [
+        "src/omnismi/normalize.py",
+        "tests/test_normalization.py"
+      ]
+    },
+    {
+      "id": "normalize-percent-fraction-support",
+      "area": "normalization",
+      "status": "verified",
+      "title": "normalize_percent() accepts percentage fractions",
+      "description": "Values between 0 and 1 normalize to percentage points when appropriate.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_normalization.py -k percent"
+      ],
+      "source_of_truth": [
+        "src/omnismi/normalize.py",
+        "tests/test_normalization.py"
+      ]
+    },
+    {
+      "id": "normalize-temp-auto-millicelsius",
+      "area": "normalization",
+      "status": "verified",
+      "title": "normalize_temperature_c() supports millicelsius inputs",
+      "description": "Temperature values normalize to Celsius and reject implausible readings.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_normalization.py -k temperature"
+      ],
+      "source_of_truth": [
+        "src/omnismi/normalize.py",
+        "tests/test_normalization.py"
+      ]
+    },
+    {
+      "id": "normalize-power-unit-conversion",
+      "area": "normalization",
+      "status": "verified",
+      "title": "normalize_power_w() converts common vendor units to Watts",
+      "description": "Power readings normalize from W, mW, or uW and reject implausible results.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_normalization.py -k power"
+      ],
+      "source_of_truth": [
+        "src/omnismi/normalize.py",
+        "tests/test_normalization.py"
+      ]
+    },
+    {
+      "id": "normalize-clock-unit-conversion",
+      "area": "normalization",
+      "status": "verified",
+      "title": "normalize_clock_mhz() converts Hz and kHz inputs to MHz",
+      "description": "Clock readings normalize to MHz with sanity bounds.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_normalization.py -k clock"
+      ],
+      "source_of_truth": [
+        "src/omnismi/normalize.py",
+        "tests/test_normalization.py"
+      ]
+    },
+    {
+      "id": "nvidia-lazy-import-and-init",
+      "area": "nvidia_backend",
+      "status": "implemented",
+      "title": "NVIDIA backend imports and initializes NVML lazily",
+      "description": "NVML is only imported and initialized when the NVIDIA backend is actually used.",
+      "verification": [
+        "Inspect `_import_nvml()` and `_ensure_initialized()` in src/omnismi/backends/nvidia.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/nvidia.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "nvidia-device-discovery",
+      "area": "nvidia_backend",
+      "status": "implemented",
+      "title": "NVIDIA backend enumerates devices via NVML handles",
+      "description": "Device discovery returns `(vendor_index, handle)` tuples for each visible NVIDIA GPU.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_nvidia_backend_mock.py -k reads_expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/nvidia.py",
+        "tests/test_nvidia_backend_mock.py"
+      ]
+    },
+    {
+      "id": "nvidia-info-fields",
+      "area": "nvidia_backend",
+      "status": "verified",
+      "title": "NVIDIA backend exposes normalized static info",
+      "description": "The backend reads name, UUID, driver version, and total memory from NVML.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_nvidia_backend_mock.py -k reads_expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/nvidia.py",
+        "tests/test_nvidia_backend_mock.py"
+      ]
+    },
+    {
+      "id": "nvidia-metrics-fields",
+      "area": "nvidia_backend",
+      "status": "verified",
+      "title": "NVIDIA backend exposes normalized dynamic metrics",
+      "description": "The backend reads utilization, memory, temperature, power, and clocks from NVML.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_nvidia_backend_mock.py -k reads_expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/nvidia.py",
+        "tests/test_nvidia_backend_mock.py"
+      ]
+    },
+    {
+      "id": "nvidia-metrics-cache",
+      "area": "nvidia_backend",
+      "status": "verified",
+      "title": "NVIDIA metrics default to cached psutil-style sampling",
+      "description": "Repeated metric reads reuse cached values until the sampler refreshes them.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_nvidia_backend_mock.py -k cache"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/nvidia.py",
+        "tests/test_nvidia_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "nvidia-realtime-bypass-cache",
+      "area": "nvidia_backend",
+      "status": "verified",
+      "title": "NVIDIA realtime mode bypasses the metrics cache",
+      "description": "Inside `GPU.realtime()` / `backend.realtime_mode()`, each metric read hits NVML directly.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_nvidia_backend_mock.py -k realtime"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/nvidia.py",
+        "tests/test_nvidia_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "nvidia-close-stops-sampler",
+      "area": "nvidia_backend",
+      "status": "verified",
+      "title": "NVIDIA backend shutdown stops sampling and closes NVML",
+      "description": "Closing the backend stops the background sampler, clears cache state, and calls `nvmlShutdown()`.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_nvidia_backend_mock.py -k reads_expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/nvidia.py",
+        "tests/test_nvidia_backend_mock.py"
+      ]
+    },
+    {
+      "id": "amd-lazy-import-and-init",
+      "area": "amd_backend",
+      "status": "implemented",
+      "title": "AMD backend imports and initializes AMD SMI lazily",
+      "description": "AMD SMI is imported and initialized only when the AMD backend is used.",
+      "verification": [
+        "Inspect `_import_amdsmi()` and `_ensure_initialized()` in src/omnismi/backends/amd.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py"
+      ]
+    },
+    {
+      "id": "amd-handle-discovery-fallback",
+      "area": "amd_backend",
+      "status": "implemented",
+      "title": "AMD backend supports both processor-handle and gpu-handle discovery",
+      "description": "Handle lookup falls back across AMD SMI API variants for broader compatibility.",
+      "verification": [
+        "Inspect `_handles()` in src/omnismi/backends/amd.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py"
+      ]
+    },
+    {
+      "id": "amd-info-fields",
+      "area": "amd_backend",
+      "status": "verified",
+      "title": "AMD backend exposes normalized static info",
+      "description": "The backend reads market name, serial/UUID-like identifier, driver information, and total VRAM.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_amd_backend_mock.py -k reads_expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py",
+        "tests/test_amd_backend_mock.py"
+      ]
+    },
+    {
+      "id": "amd-temp-fallback",
+      "area": "amd_backend",
+      "status": "implemented",
+      "title": "AMD backend falls back across EDGE, HOTSPOT, VRAM, and legacy temperature APIs",
+      "description": "Temperature reads prefer modern AMD SMI sensors and fall back when a sensor is missing.",
+      "verification": [
+        "Inspect `_read_temperature()` in src/omnismi/backends/amd.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py"
+      ]
+    },
+    {
+      "id": "amd-power-fallback",
+      "area": "amd_backend",
+      "status": "implemented",
+      "title": "AMD backend falls back across power API variants",
+      "description": "Power reads use socket power first, then legacy GPU power paths when needed.",
+      "verification": [
+        "Inspect `_read_power()` in src/omnismi/backends/amd.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py"
+      ]
+    },
+    {
+      "id": "amd-clock-fallback",
+      "area": "amd_backend",
+      "status": "implemented",
+      "title": "AMD backend falls back across clock API variants",
+      "description": "Core and memory clocks are resolved through modern clock info APIs with legacy fallback support.",
+      "verification": [
+        "Inspect `_read_clocks()` in src/omnismi/backends/amd.py."
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py"
+      ]
+    },
+    {
+      "id": "amd-metrics-fields",
+      "area": "amd_backend",
+      "status": "verified",
+      "title": "AMD backend exposes normalized dynamic metrics",
+      "description": "The backend reads utilization, memory, temperature, power, and clocks from AMD SMI.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_amd_backend_mock.py -k reads_expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py",
+        "tests/test_amd_backend_mock.py"
+      ]
+    },
+    {
+      "id": "amd-metrics-cache",
+      "area": "amd_backend",
+      "status": "verified",
+      "title": "AMD metrics default to cached psutil-style sampling",
+      "description": "Repeated AMD metric reads reuse cached values until the sampler refreshes them.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_amd_backend_mock.py -k cache"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py",
+        "tests/test_amd_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "amd-realtime-bypass-cache",
+      "area": "amd_backend",
+      "status": "verified",
+      "title": "AMD realtime mode bypasses the metrics cache",
+      "description": "Inside `GPU.realtime()` or `backend.realtime_mode()`, each AMD metric read hits AMD SMI directly.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_amd_backend_mock.py -k realtime"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py",
+        "tests/test_amd_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "amd-close-shutdown-compat",
+      "area": "amd_backend",
+      "status": "verified",
+      "title": "AMD backend shutdown supports multiple AMD SMI close methods",
+      "description": "Closing the backend works with both `amdsmi_shut_down()` and `amdsmi_shutdown()` variants.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_amd_backend_mock.py -k reads_expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py",
+        "tests/test_amd_backend_mock.py"
+      ]
+    },
+    {
+      "id": "google-tpu-lazy-import-and-detect",
+      "area": "google_tpu_backend",
+      "status": "verified",
+      "title": "Google TPU backend imports libtpu lazily and detects devices from monitoring metrics",
+      "description": "The backend uses `libtpu.sdk.tpumonitoring` only when present and treats non-empty supported metric arrays as visible TPU devices.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k expected_fields",
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k unavailable"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/google_tpu.py",
+        "tests/test_google_tpu_backend_mock.py",
+        "docs/compatibility.md"
+      ]
+    },
+    {
+      "id": "google-tpu-info-fields",
+      "area": "google_tpu_backend",
+      "status": "verified",
+      "title": "Google TPU backend exposes normalized static info",
+      "description": "The backend reports vendor, accelerator name, libtpu version, and HBM total when available.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/google_tpu.py",
+        "tests/test_google_tpu_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "google-tpu-metrics-fields",
+      "area": "google_tpu_backend",
+      "status": "verified",
+      "title": "Google TPU backend exposes normalized snapshot metrics",
+      "description": "The backend maps TPU duty cycle and HBM usage into the existing public metrics model while leaving unsupported fields as `None`.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/google_tpu.py",
+        "tests/test_google_tpu_backend_mock.py",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "no-backend-empty-results",
+      "area": "validation",
+      "status": "verified",
+      "title": "No-backend hosts return empty results instead of errors",
+      "description": "CPU-only or unconfigured hosts should still be able to import and call the API safely.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_no_vendor_installed.py"
+      ],
+      "source_of_truth": [
+        "src/omnismi/api.py",
+        "tests/test_no_vendor_installed.py"
+      ]
+    },
+    {
+      "id": "parity-cli-argument-contract",
+      "area": "validation",
+      "status": "implemented",
+      "title": "Parity CLI accepts vendor, sample count, and interval arguments",
+      "description": "The parity command provides a stable CLI contract for local vendor comparison runs.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --help"
+      ],
+      "source_of_truth": [
+        "src/omnismi/validation/parity.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "parity-nvidia-direct-compare",
+      "area": "validation",
+      "status": "implemented",
+      "title": "Parity command compares Omnismi against direct NVIDIA readings",
+      "description": "NVIDIA parity evaluation gathers Omnismi samples, collects direct NVML samples, and applies tolerances.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3"
+      ],
+      "source_of_truth": [
+        "src/omnismi/validation/parity.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "parity-amd-direct-compare",
+      "area": "validation",
+      "status": "implemented",
+      "title": "Parity command compares Omnismi against direct AMD readings",
+      "description": "AMD parity evaluation gathers Omnismi samples, collects direct AMD SMI samples, and applies tolerances.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3"
+      ],
+      "source_of_truth": [
+        "src/omnismi/validation/parity.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "docs-short-readme-detailed-docs",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "README stays short while detailed docs live under docs/",
+      "description": "The repo keeps the README usage-oriented and defers deeper references to the docs site content.",
+      "verification": [
+        "Review README.md and docs/development.md."
+      ],
+      "source_of_truth": [
+        "README.md",
+        "docs/development.md"
+      ]
+    },
+    {
+      "id": "docs-readme-quickstart-prominent",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "README exposes Quick Start near the top",
+      "description": "The README puts executable usage near the top so users and agents can see the core API before digging into matrices and background sections.",
+      "verification": [
+        "Review the section order in README.md."
+      ],
+      "source_of_truth": [
+        "README.md"
+      ]
+    },
+    {
+      "id": "docs-compatibility-matrix-maintained",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "Compatibility matrix tracks verified and pending hardware evidence",
+      "description": "Compatibility docs distinguish verified hardware from adapter paths that still need user validation.",
+      "verification": [
+        "Review docs/compatibility.md."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "docs-google-tpu-support-documented",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "Documentation describes experimental Google TPU support",
+      "description": "README and docs explain the libtpu-based TPU backend, its experimental status, and the current parity gap.",
+      "verification": [
+        "Review README.md, docs/index.md, docs/compatibility.md, and docs/validation.md."
+      ],
+      "source_of_truth": [
+        "README.md",
+        "docs/index.md",
+        "docs/compatibility.md",
+        "docs/validation.md"
+      ]
+    },
+    {
+      "id": "docs-roadmap-maintained",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "Roadmap documents near-term and long-term platform work",
+      "description": "The roadmap keeps v1.x follow-up items and longer-term adapter strategy visible.",
+      "verification": [
+        "Review docs/roadmap.md."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md"
+      ]
+    },
+    {
+      "id": "docs-mkdocs-site-buildable",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "Docs are configured for MkDocs builds",
+      "description": "The repo includes MkDocs configuration and docs dependencies for local site builds.",
+      "verification": [
+        "mkdocs build --strict"
+      ],
+      "source_of_truth": [
+        "mkdocs.yml",
+        "pyproject.toml",
+        "docs/"
+      ]
+    },
+    {
+      "id": "validate-nvidia-h100",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate NVIDIA H100 on real hardware",
+      "description": "Promote H100 support from adapter-path evidence to verified compatibility with parity output and environment details.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-nvidia-h200",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate NVIDIA H200 on real hardware",
+      "description": "Collect parity evidence and environment metadata for H200 systems.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-nvidia-b200",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate NVIDIA B200 on real hardware",
+      "description": "Collect parity evidence and environment metadata for B200 systems.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-nvidia-rtx4090",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate NVIDIA RTX 4090 on real hardware",
+      "description": "Collect parity evidence and environment metadata for desktop-class NVIDIA systems.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-amd-mi250",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate AMD MI250 on real hardware",
+      "description": "Collect parity evidence and environment metadata for MI250 systems.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-amd-mi300a",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate AMD MI300A on real hardware",
+      "description": "Collect parity evidence and environment metadata for MI300A systems.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-amd-mi325x",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate AMD MI325X on real hardware",
+      "description": "Collect parity evidence and environment metadata for MI325X systems.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-amd-rx7900xtx",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate AMD RX 7900 XTX on real hardware",
+      "description": "Collect parity evidence and environment metadata for desktop-class AMD systems.",
+      "verification": [
+        "PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3",
+        "Update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "validate-google-tpu",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate Google TPU on real hardware",
+      "description": "Collect real Cloud TPU evidence for libtpu monitoring metrics, accelerator type reporting, and HBM usage output.",
+      "verification": [
+        "Run Omnismi on a Cloud TPU VM and update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "intel-adapter",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Add an Intel adapter without changing the public API",
+      "description": "Future Intel support should fit under the existing `count/gpus/gpu` and `info/metrics` contract.",
+      "verification": [
+        "Add backend implementation, tests, docs, and compatibility entries."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "apple-adapter",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Add an Apple/Metal adapter without changing the public API",
+      "description": "Future Apple support should fit under the existing `count/gpus/gpu` and `info/metrics` contract.",
+      "verification": [
+        "Add backend implementation, tests, docs, and compatibility entries."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "backend-diagnostics",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Improve backend diagnostics and debug visibility",
+      "description": "Add more explicit diagnostics for import failures, partial metric availability, and environment drift without weakening graceful defaults.",
+      "verification": [
+        "Add tests/docs for the new diagnostics surface."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "google-tpu-direct-parity",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Add direct validation tooling for Google TPU",
+      "description": "Extend validation tooling beyond NVIDIA and AMD so Google TPU backends can be compared against direct monitoring-library readings.",
+      "verification": [
+        "Add CLI support, direct collector logic, docs, and tests."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "docs/validation.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "runtime-integration-review",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Review scheduler/runtime integration helpers after v1.x stabilizes",
+      "description": "Only revisit framework or scheduler-specific helpers after the core observability contract remains stable.",
+      "verification": [
+        "Update app_spec, roadmap, docs, and tests before expanding the API."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    }
+  ]
+}

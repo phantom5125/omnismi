@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "omnismi"
 version = "1.0.0"
-description = "Cross-vendor GPU observability for AI agents and Python apps (NVIDIA and AMD today)"
-keywords = ["gpu", "cross-vendor", "nvidia", "amd", "observability", "ai-agent"]
+description = "Cross-vendor accelerator observability for AI agents and Python apps (NVIDIA, AMD, and Google TPU today)"
+keywords = ["gpu", "tpu", "accelerator", "cross-vendor", "nvidia", "amd", "google", "observability", "ai-agent"]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.9"
@@ -29,12 +29,16 @@ dependencies = []
 all = [
     "nvidia-ml-py>=11.525.84",
     "amdsmi>=6.0.0",
+    "libtpu>=0.0.37",
 ]
 nvidia = [
     "nvidia-ml-py>=11.525.84",
 ]
 amd = [
     "amdsmi>=6.0.0",
+]
+tpu = [
+    "libtpu>=0.0.37",
 ]
 dev = [
     "pytest>=8.0",
