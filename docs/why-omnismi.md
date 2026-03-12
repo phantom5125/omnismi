@@ -2,9 +2,9 @@
 
 ## Target users
 
-- AI agent and coding-agent developers who need portable GPU preflight checks.
-- Python application developers who want one GPU metrics API across mixed vendor environments.
-- Platform engineers operating shared images or clusters that may include NVIDIA and AMD GPUs.
+- AI agent and coding-agent developers who need portable accelerator preflight checks.
+- Python application developers who want one accelerator metrics API across mixed vendor environments.
+- Platform engineers operating shared images or clusters that may include NVIDIA GPUs, AMD GPUs, and Google TPUs.
 
 ## Why torch memory APIs are not enough
 
@@ -23,7 +23,7 @@ directly in app logic often creates vendor-specific branches and repeated normal
 - A stable cross-vendor API contract: `count`, `gpus`, `gpu`, `info`, `metrics`.
 - Normalized metric units and field names for common telemetry workflows.
 - Graceful degradation semantics: missing values are returned as `None`.
-- A parity command to compare Omnismi output with direct vendor readings.
+- A parity command to compare Omnismi GPU output with direct vendor readings.
 - Clear support-vs-validation semantics for production planning.
 
 `🧪 Awaiting User Validation` does NOT mean unsupported.

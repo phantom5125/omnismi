@@ -1,6 +1,7 @@
 # Validation
 
 Omnismi includes a local parity checker to compare Omnismi readings with direct vendor-library readings.
+Today that parity tool supports NVIDIA and AMD GPU backends only.
 
 ## Command
 
@@ -31,3 +32,4 @@ The tool prints CSV-like rows with:
 
 - This check is local and manual by design in v1.x.
 - It is intended for hardware bring-up and release validation.
+- Google TPU currently exposes snapshot metrics without a direct parity collector.

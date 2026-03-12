@@ -4,11 +4,11 @@
   <img src="assets/OMNIsmi.svg" alt="Omnismi logo" width="300" />
 </p>
 
-Omnismi provides one compact API for reading GPU information and metrics across vendors.
+Omnismi provides one compact API for reading accelerator information and metrics across vendors.
 
 ## Design goals
 
-- Unified API surface for NVIDIA and AMD.
+- Unified API surface for NVIDIA, AMD, and Google TPU.
 - Minimal function names aligned with `psutil` style.
 - Stable metric units: bytes, percent, Celsius, Watts, MHz.
 - Graceful degradation when some metrics are unavailable.
@@ -17,6 +17,7 @@ Omnismi provides one compact API for reading GPU information and metrics across 
 
 - NVIDIA through `nvidia-ml-py` (module: `pynvml`)
 - AMD through `amdsmi`
+- Google TPU through `libtpu.sdk.tpumonitoring`
 
 ## Quick usage
 

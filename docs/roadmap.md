@@ -3,7 +3,7 @@
 ## v1.0.x
 
 - Stable minimal API (`count`, `gpus`, `gpu`, `info`, `metrics`)
-- NVIDIA + AMD backend support
+- NVIDIA + AMD backend support plus experimental Google TPU support
 - Unified units and nullable metrics
 - Local parity validation workflow
 
@@ -12,6 +12,7 @@
 - Expand tested runtime/driver matrix
 - Improve per-architecture compatibility notes
 - Add more backend diagnostics and debug visibility
+- Add direct validation/parity workflow for Google TPU
 
 ## v2.0
 

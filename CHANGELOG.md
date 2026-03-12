@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Experimental Google TPU backend backed by `libtpu.sdk.tpumonitoring`
+
 ### Changed
 
 - AMD backend now matches NVIDIA-style cached metric sampling and `GPU.realtime()` bypass behavior

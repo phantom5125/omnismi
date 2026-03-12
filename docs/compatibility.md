@@ -26,6 +26,7 @@ Omnismi normalizes values but does not hide platform/runtime constraints.
 |---|---|---|---|
 | NVIDIA | CUDA/NVML-compatible driver | Hopper, Blackwell, and adjacent NVML-supported GPUs | Guaranteed on Linux x86_64 |
 | AMD | ROCm/amdsmi-compatible stack | CDNA/RDNA families exposed by amdsmi | Guaranteed on Linux x86_64 |
+| Google TPU | Cloud TPU VM + LibTPU SDK | Cloud TPU families exposed by the TPU Monitoring Library | Experimental |
 
 ## Adapter matrix (ground truth libraries)
 
@@ -33,6 +34,7 @@ Omnismi normalizes values but does not hide platform/runtime constraints.
 |---|---|---|---|---|
 | NVIDIA | CUDA + NVML | `nvidia-ml-py` | ✅ Supported | Primary NVIDIA adapter in v1.x. |
 | AMD | ROCm + AMD SMI | `amdsmi` | ✅ Supported | Primary AMD adapter in v1.x. |
+| Google TPU | Cloud TPU VM + LibTPU SDK | `libtpu.sdk.tpumonitoring` | 🟡 Partial | Snapshot metrics only; direct parity tooling is not implemented yet. |
 | Intel | oneAPI + Level Zero | TBD | ⬜ Planned | Future vendor onboarding. |
 | Apple | Metal | TBD | ⬜ Planned | Future vendor onboarding. |
 
@@ -50,6 +52,7 @@ Omnismi normalizes values but does not hide platform/runtime constraints.
 | AMD | MI300A | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | AMD | MI325X | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | AMD | RX 7900 XTX | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
+| Google TPU | Cloud TPU | TBD (awaiting user report) | `libtpu.sdk.tpumonitoring` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | Direct parity tooling not implemented yet |
 | Intel | Data Center GPU families | oneAPI + Level Zero (not integrated) | TBD | - | ⬜ Planned | - | Vendor adapter not integrated yet |
 
 ## Contributing validation evidence

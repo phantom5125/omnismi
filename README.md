@@ -4,9 +4,9 @@
   <img src="docs/assets/OMNIsmi.svg" alt="Omnismi logo" width="320" />
 </p>
 
-Cross-vendor GPU observability for AI agents and Python scripts (NVIDIA and AMD for now).
-Omnismi provides a compact and stable Python API for reading GPU information and metrics across vendors.
-The long-term goal is broader vendor coverage without changing user-facing API contracts.
+Cross-vendor accelerator observability for AI agents and Python scripts.
+Omnismi provides a compact and stable Python API for reading accelerator information and metrics across vendors.
+NVIDIA GPUs, AMD GPUs, and Google TPUs are supported today, with the Google TPU path marked experimental.
 
 ## Quick Start
 
@@ -40,7 +40,8 @@ Pick the install command that matches your environment:
 | No GPU / CI / just developing API integration | Core package only | `pip install omnismi` |
 | NVIDIA GPUs only | Core + NVIDIA backend dependency | `pip install "omnismi[nvidia]"` |
 | AMD GPUs only | Core + AMD backend dependency | `pip install "omnismi[amd]"` |
-| Mixed cluster or shared image | Core + NVIDIA + AMD dependencies | `pip install "omnismi[all]"` |
+| Google TPU VM | Core + TPU backend dependency | `pip install "omnismi[tpu]"` |
+| Mixed cluster or shared image | Core + NVIDIA + AMD + TPU dependencies | `pip install "omnismi[all]"` |
 
 ### Install From Local Source
 
@@ -55,6 +56,8 @@ If you only need one vendor backend during local development:
 python -m pip install -e ".[nvidia]"
 # or
 python -m pip install -e ".[amd]"
+# or
+python -m pip install -e ".[tpu]"
 ```
 
 ## Why Omnismi
@@ -63,6 +66,7 @@ python -m pip install -e ".[amd]"
 - Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
 - Graceful degradation: unavailable metrics return `None` instead of raising by default.
 - NVIDIA and AMD both support psutil-style cached sampling plus `GPU.realtime()` for forced live reads.
+- Google TPU support uses the TPU Monitoring Library through `libtpu.sdk.tpumonitoring`.
 - Built-in parity checker to compare normalized output with direct vendor readings.
 
 ## Why not just torch/pynvml/amdsmi?
@@ -78,6 +82,7 @@ contract for agent preflight and application telemetry. See [docs/why-omnismi.md
 |---|---|---|---|
 | NVIDIA | CUDA + NVML | `nvidia-ml-py` | ✅ Supported |
 | AMD | ROCm + AMD SMI | `amdsmi` | ✅ Supported |
+| Google TPU | Cloud TPU VM + LibTPU SDK | `libtpu.sdk.tpumonitoring` | 🟡 Experimental |
 | Intel | oneAPI + Level Zero | TBD | ⬜ Planned |
 | Apple | Metal | TBD | ⬜ Planned |
 
@@ -93,6 +98,7 @@ Status legend:
 |---|---|---|---|
 | NVIDIA | H20 | ✅ Verified | [v1.0.0 release note](CHANGELOG.md#100---2026-02-25) |
 | AMD | MI300X | ✅ Verified | [v1.0.0 release note](CHANGELOG.md#100---2026-02-25) |
+| Google TPU | Cloud TPU | 🧪 Awaiting User Validation | - |
 
 See full matrix in [docs/compatibility.md](docs/compatibility.md).
 
@@ -105,12 +111,16 @@ See full matrix in [docs/compatibility.md](docs/compatibility.md).
 - `GPU.metrics() -> GPUMetrics`
 - `GPU.realtime() -> context manager` (force live reads when backend supports it)
 
+Google TPU support currently reuses the existing `gpus()` / `GPUInfo` / `GPUMetrics` surface for API
+compatibility even though the underlying accelerator is not a GPU.
+
 ## Current Support and Semantics
 
 | Vendor | Status | Backend dependency | Read semantics |
 |---|---|---|---|
 | NVIDIA | Supported | `nvidia-ml-py` | Read-only, normalized units, cached by default, `GPU.realtime()` available |
 | AMD | Supported | `amdsmi` | Read-only, normalized units, cached by default, `GPU.realtime()` available |
+| Google TPU | Experimental | `libtpu` | Read-only snapshot metrics from TPU Monitoring Library; no Omnismi parity collector yet |
 | Other vendors (Intel, Apple, etc.) | Planned | TBD | Same API contract (`count/gpus/gpu`, `info/metrics`) |
 
 | Metric field | Unit | Semantic |
@@ -146,9 +156,9 @@ if dev is not None:
 
 ## Roadmap (Todo)
 
-- Extend backend coverage to more GPU vendors.
+- Extend backend coverage to more accelerator vendors.
 - Improve compatibility matrix depth across drivers/runtimes/architectures.
-- Strengthen parity validation workflow and reporting.
+- Strengthen parity validation workflow and reporting, including non-GPU backends.
 - Expand hardware-backed tests and reproducibility tooling.
 - Keep API minimal while improving metric quality and consistency.
 
@@ -156,7 +166,7 @@ if dev is not None:
 
 - API and usage docs: `docs/`
 - Build docs locally: `mkdocs serve`
-- Parity validation: `python -m omnismi.validation.parity --vendor nvidia --samples 3`
+- GPU parity validation: `python -m omnismi.validation.parity --vendor nvidia --samples 3`
 
 ## Local Validation
 
@@ -164,10 +174,12 @@ if dev is not None:
 # run unit tests
 PYTHONPATH=src pytest -q
 
-# compare normalized output against direct vendor API
+# compare normalized GPU output against direct vendor API
 PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3
 PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3
 ```
+
+Google TPU support currently exposes local snapshot metrics only. A direct parity command for TPU is not yet available.
 
 ## License
 
