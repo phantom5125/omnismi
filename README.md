@@ -4,9 +4,27 @@
   <img src="docs/assets/OMNIsmi.svg" alt="Omnismi logo" width="320" />
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/omnismi/"><img src="https://img.shields.io/pypi/v/omnismi?label=PyPI&color=2d6cdf" alt="PyPI version" /></a>
+  <a href="https://pypi.org/project/omnismi/"><img src="https://img.shields.io/pypi/pyversions/omnismi?label=Python" alt="Supported Python versions" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/pypi/l/omnismi?label=License" alt="License" /></a>
+</p>
+
+<p align="center">
+  <strong>One compact API for accelerator inventory and metrics across NVIDIA GPUs, AMD GPUs, and experimental Google TPUs.</strong>
+</p>
+
 Cross-vendor accelerator observability for AI agents and Python scripts.
 Omnismi provides a compact and stable Python API for reading accelerator information and metrics across vendors.
 NVIDIA GPUs, AMD GPUs, and Google TPUs are supported today, with the Google TPU path marked experimental.
+
+## Highlights
+
+- One small public surface: `count`, `gpus`, `gpu`, `GPU.info()`, `GPU.metrics()`.
+- Fixed normalized units across vendors: bytes, percent, Celsius, Watts, MHz.
+- Graceful degradation by default: unavailable values become `None` instead of exceptions.
+- Cached psutil-style GPU sampling plus `GPU.realtime()` for direct reads on NVIDIA and AMD.
+- Ground-truth integrations with `nvidia-ml-py`, `amdsmi`, and `libtpu.sdk.tpumonitoring`.
 
 ## Quick Start
 

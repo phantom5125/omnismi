@@ -9,6 +9,7 @@
 ### Changed
 
 - AMD backend now matches NVIDIA-style cached metric sampling and `GPU.realtime()` bypass behavior
+- README now includes project badges, and a more polished top section
 - README quick start moved earlier in the document
 - `utilization_percent` semantics documented as vendor-reported top-level activity, not SM/CU occupancy
 

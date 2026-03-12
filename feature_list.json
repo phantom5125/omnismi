@@ -812,6 +812,20 @@
       ]
     },
     {
+      "id": "docs-readme-badges-and-upstream-links",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "README includes project badges and upstream-library links",
+      "description": "The README exposes PyPI/license/python badges plus linked badges for psutil inspiration and the underlying vendor libraries Omnismi builds on.",
+      "verification": [
+        "Review the badge section at the top of README.md."
+      ],
+      "source_of_truth": [
+        "README.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
       "id": "docs-compatibility-matrix-maintained",
       "area": "documentation",
       "status": "implemented",
