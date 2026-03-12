@@ -8,11 +8,16 @@ from typing import Callable
 
 from omnismi.backends.base import BaseBackend
 from omnismi.backends.amd import AmdBackend
+from omnismi.backends.google_tpu import GoogleTpuBackend
 from omnismi.backends.nvidia import NvidiaBackend
 
 BackendFactory = Callable[[], BaseBackend]
 
-_DEFAULT_FACTORIES: tuple[BackendFactory, ...] = (NvidiaBackend, AmdBackend)
+_DEFAULT_FACTORIES: tuple[BackendFactory, ...] = (
+    NvidiaBackend,
+    AmdBackend,
+    GoogleTpuBackend,
+)
 _BACKEND_FACTORIES: tuple[BackendFactory, ...] = _DEFAULT_FACTORIES
 _BACKENDS: list[BaseBackend] | None = None
 _LOCK = threading.Lock()
