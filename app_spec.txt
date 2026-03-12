@@ -6,20 +6,21 @@ Project type
 - Anthropic-style harness rules still apply, but `init.sh` should bootstrap the package and run validation instead of starting a server.
 
 Product goal
-- Provide a compact, stable, cross-vendor GPU observability API for AI agents and Python applications.
-- Current in-scope vendors are NVIDIA and AMD.
+- Provide a compact, stable, cross-vendor accelerator observability API for AI agents and Python applications.
+- Current in-scope accelerators are NVIDIA GPUs, AMD GPUs, and experimental Google TPUs.
 - Long-term expansion should add more vendors without breaking the public API contract.
 
 Primary users
-- Coding agents that need portable GPU preflight checks.
-- Python applications that need normalized GPU inventory and metrics.
+- Coding agents that need portable accelerator preflight checks.
+- Python applications that need normalized accelerator inventory and metrics.
 - Contributors validating vendor/runtime parity against ground-truth libraries.
 
 Current public contract
 - Top-level API: `omnismi.count()`, `omnismi.gpus()`, `omnismi.gpu(index)`.
 - Device object: `GPU.index`, `GPU.info()`, `GPU.metrics()`, `GPU.realtime()`.
 - Public models: `GPUInfo`, `GPUMetrics`.
-- Supported public vendors today: `nvidia`, `amd`.
+- Supported public vendors today: `nvidia`, `amd`, `google`.
+- `GPU` / `gpus()` names are historical API names and currently also cover the experimental Google TPU backend.
 
 Public model fields
 - `GPUInfo`: `index`, `vendor`, `name`, `uuid`, `driver`, `memory_total_bytes`.
@@ -37,6 +38,7 @@ Hard invariants
 Current backend behavior
 - NVIDIA uses `nvidia-ml-py` (`pynvml`) and supports cached psutil-style sampling plus `GPU.realtime()` for forced live reads.
 - AMD uses `amdsmi` with compatibility fallbacks for handle discovery, temperature, power, and clocks, plus cached psutil-style sampling and `GPU.realtime()`.
+- Google TPU uses `libtpu.sdk.tpumonitoring` for local snapshot metrics such as duty cycle and HBM usage. Temperature, power, clocks, and parity tooling are still unavailable.
 - The backend registry instantiates known backends lazily, filters unavailable ones, and closes them at process exit.
 
 Validation contract

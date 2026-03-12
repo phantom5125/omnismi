@@ -99,7 +99,7 @@
       "area": "packaging",
       "status": "implemented",
       "title": "Core package installs without mandatory vendor dependencies",
-      "description": "Base `omnismi` installs without `pynvml` or `amdsmi` so CI and CPU-only users can integrate the API.",
+      "description": "Base `omnismi` installs without `pynvml`, `amdsmi`, or `libtpu` so CI and CPU-only users can integrate the API.",
       "verification": [
         "Inspect `[project].dependencies` in pyproject.toml."
       ],
@@ -140,10 +140,24 @@
       "id": "package-extra-all",
       "area": "packaging",
       "status": "implemented",
-      "title": "Combined extra installs both vendor backends",
-      "description": "The `all` extra installs both `nvidia-ml-py` and `amdsmi` for mixed environments.",
+      "title": "Combined extra installs all supported accelerator backends",
+      "description": "The `all` extra installs `nvidia-ml-py`, `amdsmi`, and `libtpu` for mixed environments.",
       "verification": [
         "Inspect `[project.optional-dependencies].all` in pyproject.toml."
+      ],
+      "source_of_truth": [
+        "pyproject.toml",
+        "README.md"
+      ]
+    },
+    {
+      "id": "package-extra-tpu",
+      "area": "packaging",
+      "status": "implemented",
+      "title": "TPU extra installs libtpu",
+      "description": "The `tpu` extra exposes `libtpu` for Google TPU environments.",
+      "verification": [
+        "Inspect `[project.optional-dependencies].tpu` in pyproject.toml."
       ],
       "source_of_truth": [
         "pyproject.toml",
@@ -669,6 +683,52 @@
       ]
     },
     {
+      "id": "google-tpu-lazy-import-and-detect",
+      "area": "google_tpu_backend",
+      "status": "verified",
+      "title": "Google TPU backend imports libtpu lazily and detects devices from monitoring metrics",
+      "description": "The backend uses `libtpu.sdk.tpumonitoring` only when present and treats non-empty supported metric arrays as visible TPU devices.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k expected_fields",
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k unavailable"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/google_tpu.py",
+        "tests/test_google_tpu_backend_mock.py",
+        "docs/compatibility.md"
+      ]
+    },
+    {
+      "id": "google-tpu-info-fields",
+      "area": "google_tpu_backend",
+      "status": "verified",
+      "title": "Google TPU backend exposes normalized static info",
+      "description": "The backend reports vendor, accelerator name, libtpu version, and HBM total when available.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/google_tpu.py",
+        "tests/test_google_tpu_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "google-tpu-metrics-fields",
+      "area": "google_tpu_backend",
+      "status": "verified",
+      "title": "Google TPU backend exposes normalized snapshot metrics",
+      "description": "The backend maps TPU duty cycle and HBM usage into the existing public metrics model while leaving unsupported fields as `None`.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_google_tpu_backend_mock.py -k expected_fields"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/google_tpu.py",
+        "tests/test_google_tpu_backend_mock.py",
+        "app_spec.txt"
+      ]
+    },
+    {
       "id": "no-backend-empty-results",
       "area": "validation",
       "status": "verified",
@@ -763,6 +823,22 @@
       "source_of_truth": [
         "docs/compatibility.md",
         "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "docs-google-tpu-support-documented",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "Documentation describes experimental Google TPU support",
+      "description": "README and docs explain the libtpu-based TPU backend, its experimental status, and the current parity gap.",
+      "verification": [
+        "Review README.md, docs/index.md, docs/compatibility.md, and docs/validation.md."
+      ],
+      "source_of_truth": [
+        "README.md",
+        "docs/index.md",
+        "docs/compatibility.md",
+        "docs/validation.md"
       ]
     },
     {
@@ -914,6 +990,20 @@
       ]
     },
     {
+      "id": "validate-google-tpu",
+      "area": "hardware_validation",
+      "status": "awaiting_validation",
+      "title": "Validate Google TPU on real hardware",
+      "description": "Collect real Cloud TPU evidence for libtpu monitoring metrics, accelerator type reporting, and HBM usage output.",
+      "verification": [
+        "Run Omnismi on a Cloud TPU VM and update docs/compatibility.md and CHANGELOG.md with evidence."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "CHANGELOG.md"
+      ]
+    },
+    {
       "id": "intel-adapter",
       "area": "roadmap",
       "status": "planned",
@@ -954,6 +1044,21 @@
       ],
       "source_of_truth": [
         "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "google-tpu-direct-parity",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Add direct validation tooling for Google TPU",
+      "description": "Extend validation tooling beyond NVIDIA and AMD so Google TPU backends can be compared against direct monitoring-library readings.",
+      "verification": [
+        "Add CLI support, direct collector logic, docs, and tests."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "docs/validation.md",
         "app_spec.txt"
       ]
     },
