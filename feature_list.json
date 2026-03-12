@@ -280,6 +280,21 @@
       ]
     },
     {
+      "id": "utilization-percent-cross-vendor-semantics",
+      "area": "public_api",
+      "status": "implemented",
+      "title": "utilization_percent has stable cross-vendor activity semantics",
+      "description": "The public `utilization_percent` field means vendor-reported top-level compute or graphics engine activity, not SM occupancy on NVIDIA or CU occupancy on AMD.",
+      "verification": [
+        "Review README.md and app_spec.txt."
+      ],
+      "source_of_truth": [
+        "src/omnismi/models.py",
+        "README.md",
+        "app_spec.txt"
+      ]
+    },
+    {
       "id": "models-frozen-slotted",
       "area": "public_api",
       "status": "implemented",
@@ -610,6 +625,36 @@
       ]
     },
     {
+      "id": "amd-metrics-cache",
+      "area": "amd_backend",
+      "status": "verified",
+      "title": "AMD metrics default to cached psutil-style sampling",
+      "description": "Repeated AMD metric reads reuse cached values until the sampler refreshes them.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_amd_backend_mock.py -k cache"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py",
+        "tests/test_amd_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
+      "id": "amd-realtime-bypass-cache",
+      "area": "amd_backend",
+      "status": "verified",
+      "title": "AMD realtime mode bypasses the metrics cache",
+      "description": "Inside `GPU.realtime()` or `backend.realtime_mode()`, each AMD metric read hits AMD SMI directly.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_amd_backend_mock.py -k realtime"
+      ],
+      "source_of_truth": [
+        "src/omnismi/backends/amd.py",
+        "tests/test_amd_backend_mock.py",
+        "README.md"
+      ]
+    },
+    {
       "id": "amd-close-shutdown-compat",
       "area": "amd_backend",
       "status": "verified",
@@ -691,6 +736,19 @@
       "source_of_truth": [
         "README.md",
         "docs/development.md"
+      ]
+    },
+    {
+      "id": "docs-readme-quickstart-prominent",
+      "area": "documentation",
+      "status": "implemented",
+      "title": "README exposes Quick Start near the top",
+      "description": "The README puts executable usage near the top so users and agents can see the core API before digging into matrices and background sections.",
+      "verification": [
+        "Review the section order in README.md."
+      ],
+      "source_of_truth": [
+        "README.md"
       ]
     },
     {

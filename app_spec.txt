@@ -27,6 +27,7 @@ Public model fields
 
 Hard invariants
 - Public API names stay minimal and stable. Do not introduce `get_*` aliases.
+- `utilization_percent` means vendor-reported top-level compute/graphics engine activity. Do not relabel it as SM occupancy or CU occupancy.
 - Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
 - Unavailable metrics default to `None` instead of raising in normal user flows.
 - Backend-specific exceptions must not leak through the default public API path.
@@ -35,7 +36,7 @@ Hard invariants
 
 Current backend behavior
 - NVIDIA uses `nvidia-ml-py` (`pynvml`) and supports cached psutil-style sampling plus `GPU.realtime()` for forced live reads.
-- AMD uses `amdsmi` with compatibility fallbacks for handle discovery, temperature, power, and clocks.
+- AMD uses `amdsmi` with compatibility fallbacks for handle discovery, temperature, power, and clocks, plus cached psutil-style sampling and `GPU.realtime()`.
 - The backend registry instantiates known backends lazily, filters unavailable ones, and closes them at process exit.
 
 Validation contract

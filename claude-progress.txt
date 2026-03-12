@@ -13,3 +13,4 @@ Open issues
 
 Entries
 - 2026-03-12: Bootstrapped an Anthropic-style long-running agent harness for this repo. Added `app_spec.txt`, `feature_list.json`, `init.sh`, and documented the workflow in agent/development docs. Baseline checks passed with `PYTHONPATH=src pytest -q` and `python -m compileall src tests`.
+- 2026-03-12: Added AMD cached sampling and `GPU.realtime()` parity with the NVIDIA backend, documented `utilization_percent` as a cross-vendor activity signal instead of SM/CU occupancy, and moved the README quick start closer to the top. Validation passed with `PYTHONPATH=src pytest -q` and `python -m compileall src tests`.
