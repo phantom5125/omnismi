@@ -37,6 +37,8 @@ ENV/
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
 .tox/
 .nox/
@@ -52,6 +54,14 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Local shells and env managers
+.direnv/
+.envrc
+.python-version
+
+# Local agent config
+.claude/settings.local.json
 
 # Docs
 site/

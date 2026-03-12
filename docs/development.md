@@ -21,6 +21,23 @@
 PYTHONPATH=src pytest -q
 ```
 
+## Long-running agent harness
+
+Use the root harness files when an agent is working across multiple sessions:
+
+- `app_spec.txt`: project goals, invariants, and non-goals
+- `feature_list.json`: feature inventory plus verification commands
+- `claude-progress.txt`: dated progress log and open issues
+- `init.sh`: editable-install refresh plus smoke tests
+
+Recommended loop:
+
+```bash
+./init.sh
+```
+
+Then pick one discrete item from `feature_list.json`, keep tests/docs in sync, and update `claude-progress.txt` before stopping.
+
 Core test expectations:
 
 - Public API contract behavior
