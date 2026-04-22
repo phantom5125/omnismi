@@ -44,6 +44,12 @@ Show a wider machine summary:
 omnismi --wide
 ```
 
+Explain visibility mismatches or partial metrics:
+
+```bash
+omnismi doctor
+```
+
 Emit machine-readable output for agents or automation:
 
 ```bash

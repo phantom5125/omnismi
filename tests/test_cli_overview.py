@@ -43,6 +43,39 @@ class _DummyBackend(BaseBackend):
         )
 
 
+class _PartialBackend(BaseBackend):
+    vendor = "nvidia"
+
+    def available(self) -> bool:
+        return True
+
+    def devices(self) -> list[object]:
+        return ["h0"]
+
+    def info(self, device: object, index: int) -> GPUInfo:
+        return GPUInfo(
+            index=index,
+            vendor="nvidia",
+            name="NVIDIA H100 PCIe",
+            uuid=f"GPU-{index}",
+            driver="550.54.15",
+            memory_total_bytes=80 * 1024**3,
+        )
+
+    def metrics(self, device: object, index: int) -> GPUMetrics:
+        return GPUMetrics(
+            index=index,
+            utilization_percent=55.0,
+            memory_used_bytes=8 * 1024**3,
+            memory_total_bytes=80 * 1024**3,
+            temperature_c=None,
+            power_w=None,
+            core_clock_mhz=1700.0,
+            memory_clock_mhz=1593.0,
+            timestamp_ns=time.time_ns(),
+        )
+
+
 def _set_fixed_environment(monkeypatch, *, torch_count: int | None = 2) -> None:
     monkeypatch.setattr(
         "omnismi.cli._detect_environment",
@@ -141,3 +174,44 @@ def test_main_reports_missing_requested_device_indexes(
     assert payload["summary"]["warnings"] == [
         "Requested device indexes were not visible in the current runtime: 3"
     ]
+
+
+def test_doctor_reports_visibility_mismatch(backend_factories, monkeypatch, capsys) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(monkeypatch, torch_count=1)
+
+    exit_code = main(["doctor"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Omnismi Doctor 1.0.0  host=worker-a17  env=container  status=WARN" in captured.out
+    assert "PyTorch reports 1 visible GPU(s), but Omnismi found 2." in captured.out
+    assert "Compare `torch.cuda.device_count()` with `omnismi -o json`." in captured.out
+
+
+def test_doctor_reports_partial_device_metrics(backend_factories, monkeypatch, capsys) -> None:
+    backend_factories([_PartialBackend])
+    _set_fixed_environment(monkeypatch, torch_count=1)
+
+    exit_code = main(["doctor"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Device 0 has partial metrics or missing fields." in captured.out
+    assert "Metrics can be partially unavailable" in captured.out
+
+
+def test_doctor_json_output_uses_doctor_report_schema(
+    backend_factories, monkeypatch, capsys
+) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(monkeypatch, torch_count=2)
+
+    exit_code = main(["doctor", "-o", "json"])
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert exit_code == 0
+    assert payload["kind"] == "DoctorReport"
+    assert payload["summary"]["status"] == "OK"
+    assert payload["summary"]["finding_count"] == 0

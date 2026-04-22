@@ -361,6 +361,116 @@ def build_overview_report(args: argparse.Namespace, argv: list[str]) -> dict[str
     return report
 
 
+def build_doctor_report(args: argparse.Namespace, argv: list[str]) -> dict[str, Any]:
+    overview_report = build_overview_report(args=args, argv=argv)
+    findings: list[str] = []
+    possible_causes: list[str] = []
+    next_steps: list[str] = []
+
+    summary = overview_report["summary"]
+    environment = overview_report["environment"]
+    backends = overview_report["backends"]
+    devices = overview_report["inventory"]["devices"]
+    torch_count = environment.get("torch_visible_device_count")
+    mismatch = summary["visibility_status"] == _VISIBLE_STATUS_MISMATCHED
+
+    if mismatch and torch_count is not None:
+        findings.append(
+            f"PyTorch reports {torch_count} visible GPU(s), but Omnismi found {summary['device_count']}."
+        )
+        possible_causes.extend(
+            [
+                "The current runtime may expose framework-visible GPUs without the expected vendor telemetry path.",
+                "Container or pod GPU device access may be incomplete.",
+            ]
+        )
+        next_steps.extend(
+            [
+                "Confirm the current host, container, or pod has GPU device access.",
+                "Compare `torch.cuda.device_count()` with `omnismi -o json`.",
+            ]
+        )
+
+    relevant_missing_dependency = False
+    for backend in backends:
+        if backend["status"] == "error":
+            findings.append(
+                f"{backend['vendor'].upper()} backend `{backend['backend']}` reported an error."
+            )
+            if backend["reason"]:
+                possible_causes.append(backend["reason"])
+        elif backend["status"] == "missing_dependency" and (
+            args.vendor == backend["vendor"] or mismatch
+        ):
+            relevant_missing_dependency = True
+            findings.append(f"{backend['vendor'].upper()} backend is not installed in this environment.")
+
+    if relevant_missing_dependency:
+        possible_causes.append("A vendor backend dependency or userspace library is missing.")
+        next_steps.append(
+            "Install the matching Omnismi extra for the vendor you expect, such as `omnismi[nvidia]` or `omnismi[amd]`."
+        )
+
+    partial_devices = [device for device in devices if device["state"] == "PARTIAL"]
+    error_devices = [device for device in devices if device["state"] == "ERROR"]
+
+    for device in partial_devices:
+        findings.append(f"Device {device['index']} has partial metrics or missing fields.")
+    for device in error_devices:
+        findings.append(f"Device {device['index']} could not provide usable info or metrics.")
+
+    if partial_devices or error_devices:
+        possible_causes.append(
+            "Metrics can be partially unavailable because of runtime limits, permissions, or vendor API differences."
+        )
+        next_steps.append("Inspect the current runtime with `omnismi --wide` for per-device detail.")
+
+    findings.extend(summary["warnings"])
+
+    status = "OK"
+    if error_devices or any(backend["status"] == "error" for backend in backends):
+        status = "ERROR"
+    elif findings:
+        status = "WARN"
+
+    if not findings and summary["device_count"] == 0:
+        next_steps.append("No supported accelerators are visible in the current runtime.")
+        next_steps.append("This is expected on CPU-only environments.")
+
+    report = {
+        "apiVersion": "omnismi/v1alpha1",
+        "kind": "DoctorReport",
+        "metadata": dict(overview_report["metadata"]),
+        "command": {
+            "argv": ["omnismi", *argv],
+            "output": args.output,
+        },
+        "environment": environment,
+        "backends": backends,
+        "inventory": overview_report["inventory"],
+        "summary": {
+            "status": status,
+            "finding_count": len(findings),
+            "device_count": summary["device_count"],
+            "visibility_status": summary["visibility_status"],
+        },
+        "findings": _unique_preserving_order(findings),
+        "possible_causes": _unique_preserving_order(possible_causes),
+        "next_steps": _unique_preserving_order(next_steps),
+    }
+    return report
+
+
+def _unique_preserving_order(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    output: list[str] = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            output.append(value)
+    return output
+
+
 def _render_table(headers: list[str], rows: list[list[str]]) -> str:
     widths = [len(header) for header in headers]
     for row in rows:
@@ -501,6 +611,44 @@ def _render_overview_table(report: dict[str, Any], wide: bool) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _render_doctor_table(report: dict[str, Any], verbose: bool) -> str:
+    environment = report["environment"]
+    summary = report["summary"]
+    lines = [
+        (
+            f"Omnismi Doctor {report['metadata']['omnismi_version']}  "
+            f"host={environment['hostname']}  "
+            f"env={environment['execution_scope']}  "
+            f"status={summary['status']}"
+        ),
+        "",
+        "Findings:",
+    ]
+
+    if report["findings"]:
+        lines.extend(f"- {finding}" for finding in report["findings"])
+    else:
+        lines.append("- No major discovery or visibility issues were detected.")
+
+    if report["possible_causes"]:
+        lines.extend(["", "Possible causes:"])
+        lines.extend(f"- {cause}" for cause in report["possible_causes"])
+
+    if report["backends"] and (verbose or report["findings"]):
+        lines.extend(["", "Backend details:"])
+        for backend in report["backends"]:
+            detail = f"- {backend['vendor']} / {backend['backend']}: {backend['status']}"
+            if backend["reason"]:
+                detail += f'  reason="{backend["reason"]}"'
+            lines.append(detail)
+
+    if report["next_steps"]:
+        lines.extend(["", "Next steps:"])
+        lines.extend(f"- {step}" for step in report["next_steps"])
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _render_structured_output(report: dict[str, Any], output_format: str) -> str:
     if output_format == "json":
         return json.dumps(report, indent=2, sort_keys=False) + "\n"
@@ -625,6 +773,15 @@ def _run_overview(args: argparse.Namespace, argv: list[str]) -> int:
     return 0
 
 
+def _run_doctor(args: argparse.Namespace, argv: list[str]) -> int:
+    report = build_doctor_report(args=args, argv=argv)
+    if args.output == "table":
+        sys.stdout.write(_render_doctor_table(report=report, verbose=bool(args.verbose)))
+    else:
+        sys.stdout.write(_render_structured_output(report=report, output_format=args.output))
+    return 0
+
+
 def _run_placeholder(command_name: str) -> int:
     print(
         f"`omnismi {command_name}` is planned but not implemented yet.",
@@ -640,7 +797,7 @@ def main(argv: list[str] | None = None) -> int:
         parser = build_root_parser()
         args = parser.parse_args(raw_args)
         if args.command == "doctor":
-            return _run_placeholder("doctor")
+            return _run_doctor(args=args, argv=raw_args)
         if args.command == "bench":
             return _run_placeholder("bench")
         if args.command == "validate-spec":

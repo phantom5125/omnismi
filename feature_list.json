@@ -1036,13 +1036,16 @@
     {
       "id": "backend-diagnostics",
       "area": "roadmap",
-      "status": "planned",
+      "status": "verified",
       "title": "Improve backend diagnostics and debug visibility",
       "description": "Add more explicit diagnostics for import failures, partial metric availability, and environment drift without weakening graceful defaults.",
       "verification": [
-        "Add tests/docs for the new diagnostics surface."
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py"
       ],
       "source_of_truth": [
+        "src/omnismi/cli.py",
+        "tests/test_cli_overview.py",
+        "docs/cli.md",
         "docs/roadmap.md",
         "app_spec.txt"
       ]

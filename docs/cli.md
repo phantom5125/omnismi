@@ -1,10 +1,10 @@
 # CLI
 
 This page defines the Omnismi CLI surface. The main `omnismi` discovery command
-is implemented today; richer diagnostic, benchmarking, and spec-validation
-layers remain planned as the CLI grows. The CLI is intended to make Omnismi
-immediately useful in terminals, containers, and automation, while keeping the
-Python API minimal.
+and `omnismi doctor` are implemented today; richer benchmarking and
+spec-validation layers remain planned as the CLI grows. The CLI is intended to
+make Omnismi immediately useful in terminals, containers, and automation, while
+keeping the Python API minimal.
 
 ## Design goals
 
@@ -153,16 +153,16 @@ Where possible:
 ### Example default view
 
 ```text
-Omnismi 1.1.0-dev  host=worker-a17  env=container  status=PARTIAL
-Visible accelerators: 2  vendors=nvidia  backends=nvml:ok amdsmi:missing tpumonitoring:skip
+Omnismi 1.1.0-dev  host=worker-a17  env=container  status=OK
+Visible accelerators: 2  vendors=nvidia  scope=runtime-visible
 
 INDEX  VENDOR  NAME               MEM            UTIL  TEMP  POWER  STATE
 0      nvidia  NVIDIA H100 PCIe   12.5 / 80.0GB  71%   58C   246W   OK
 1      nvidia  NVIDIA H100 PCIe   11.9 / 80.0GB  65%   56C   239W   OK
 
-Warnings:
-- AMD backend dependency is not installed in this environment.
-- Temperature and power metrics may be unavailable on some runtimes or permission models.
+Tips:
+- Run `omnismi --wide` for more columns.
+- Run `omnismi doctor` if visibility or metrics look wrong.
 ```
 
 ## Expected terminal previews
