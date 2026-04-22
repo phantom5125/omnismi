@@ -58,6 +58,9 @@ Environment compatibility goals
 - Discovery and diagnostics should work on supported GPU hosts, GPU containers,
   and Kubernetes device-plugin environments without pretending the process can
   see more devices than the current runtime actually exposes.
+- Discovery and diagnostics should surface runtime visibility controls such as
+  `CUDA_VISIBLE_DEVICES`, `NVIDIA_VISIBLE_DEVICES`, `ROCR_VISIBLE_DEVICES`, and
+  related environment scoping when those controls affect what the process can see.
 - For supported GPU vendors, if the current runtime can enumerate visible GPUs,
   Omnismi should aim to expose the same visible logical device set in the
   discovery layer, or explain mismatches clearly through diagnostics.

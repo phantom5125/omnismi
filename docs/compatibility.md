@@ -41,11 +41,32 @@ In practice, this means:
 
 - if the current container only sees a subset of host GPUs, Omnismi should only report that subset
 - if the runtime can use a visible GPU, Omnismi should aim to surface it in the discovery layer
+- if runtime visibility filters such as `CUDA_VISIBLE_DEVICES`, `NVIDIA_VISIBLE_DEVICES`, `HIP_VISIBLE_DEVICES`, or `ROCR_VISIBLE_DEVICES` are active, Omnismi should treat the process as runtime-scoped and report only that filtered set
 - if PyTorch can enumerate visible GPUs in the current environment, Omnismi should aim to expose the same visible logical device set for the corresponding supported vendor
 
 When Omnismi cannot match that expectation, the preferred behavior is to report
 the mismatch explicitly through diagnostics rather than silently returning
 misleading host-global data.
+
+### Visibility controls and runtime scoping
+
+Discovery and diagnostics should surface the active runtime-visibility controls
+that shape what the current process can see.
+
+Current examples include:
+
+- `CUDA_VISIBLE_DEVICES`
+- `NVIDIA_VISIBLE_DEVICES`
+- `HIP_VISIBLE_DEVICES`
+- `ROCR_VISIBLE_DEVICES`
+- `GPU_DEVICE_ORDINAL`
+- `TPU_VISIBLE_DEVICES`
+- `TPU_VISIBLE_CHIPS`
+
+These should be treated as execution-context metadata, not as hidden global
+state. In other words, `omnismi --wide` and `omnismi doctor` should make it
+clear when a container, pod, or environment variable is intentionally scoping
+visible accelerators.
 
 ## Vendor/runtime matrix (v1 baseline)
 

@@ -7,7 +7,7 @@ import os
 import time
 
 from omnismi.backends.base import BaseBackend
-from omnismi.cli import main
+from omnismi.cli import _VISIBILITY_CONTROL_ENV_VARS, _detect_environment, main
 from omnismi.models import GPUMetrics, GPUInfo
 
 
@@ -77,14 +77,24 @@ class _PartialBackend(BaseBackend):
         )
 
 
-def _set_fixed_environment(monkeypatch, *, torch_count: int | None = 2) -> None:
+def _set_fixed_environment(
+    monkeypatch,
+    *,
+    torch_count: int | None = 2,
+    execution_scope: str = "container",
+    orchestrator: str = "kubernetes",
+    visibility_scope: str = "runtime-scoped",
+    visibility_controls: list[dict[str, str]] | None = None,
+) -> None:
     monkeypatch.setattr(
         "omnismi.cli._detect_environment",
         lambda: {
             "platform": "linux",
             "hostname": "worker-a17",
-            "execution_scope": "container",
-            "orchestrator": "kubernetes",
+            "execution_scope": execution_scope,
+            "orchestrator": orchestrator,
+            "visibility_scope": visibility_scope,
+            "visibility_controls": list(visibility_controls or []),
             "torch_visible_device_count": torch_count,
         },
     )
@@ -105,6 +115,50 @@ def _set_fixed_environment(monkeypatch, *, torch_count: int | None = 2) -> None:
         "omnismi.cli.shutil.get_terminal_size",
         lambda fallback=(100, 20): os.terminal_size((120, 40)),
     )
+
+
+def test_detect_environment_reports_host_global_scope(monkeypatch) -> None:
+    for name in ("KUBERNETES_SERVICE_HOST", *_VISIBILITY_CONTROL_ENV_VARS):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr("omnismi.cli._looks_like_container", lambda: False)
+    monkeypatch.setattr("omnismi.cli._torch_visible_device_count", lambda: 4)
+    monkeypatch.setattr("omnismi.cli.platform.system", lambda: "Linux")
+    monkeypatch.setattr("omnismi.cli.socket.gethostname", lambda: "host-a17")
+
+    environment = _detect_environment()
+
+    assert environment == {
+        "platform": "linux",
+        "hostname": "host-a17",
+        "execution_scope": "host",
+        "orchestrator": "none",
+        "visibility_scope": "host-global",
+        "visibility_controls": [],
+        "torch_visible_device_count": 4,
+    }
+
+
+def test_detect_environment_reports_runtime_scoped_kubernetes_filters(monkeypatch) -> None:
+    for name in _VISIBILITY_CONTROL_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("KUBERNETES_SERVICE_HOST", "10.0.0.1")
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0,2")
+    monkeypatch.setenv("NVIDIA_VISIBLE_DEVICES", "GPU-1234,GPU-5678")
+    monkeypatch.setattr("omnismi.cli._looks_like_container", lambda: True)
+    monkeypatch.setattr("omnismi.cli._torch_visible_device_count", lambda: 2)
+    monkeypatch.setattr("omnismi.cli.platform.system", lambda: "Linux")
+    monkeypatch.setattr("omnismi.cli.socket.gethostname", lambda: "trainer-pod")
+
+    environment = _detect_environment()
+
+    assert environment["execution_scope"] == "container"
+    assert environment["orchestrator"] == "kubernetes"
+    assert environment["visibility_scope"] == "runtime-scoped"
+    assert environment["torch_visible_device_count"] == 2
+    assert environment["visibility_controls"] == [
+        {"name": "CUDA_VISIBLE_DEVICES", "value": "0,2"},
+        {"name": "NVIDIA_VISIBLE_DEVICES", "value": "GPU-1234,GPU-5678"},
+    ]
 
 
 def test_main_default_overview_table_output(backend_factories, monkeypatch, capsys) -> None:
@@ -135,7 +189,26 @@ def test_main_wide_output_adds_runtime_block(backend_factories, monkeypatch, cap
     assert "DRIVER" in captured.out
     assert "Runtime:" in captured.out
     assert "- execution_scope=container" in captured.out
+    assert "- orchestrator=kubernetes" in captured.out
+    assert "- visibility_scope=runtime-scoped" in captured.out
+    assert "- visibility_controls=none" in captured.out
     assert "backend_status=nvidia:ok" in captured.out
+
+
+def test_main_default_output_surfaces_active_visibility_filters(
+    backend_factories, monkeypatch, capsys
+) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(
+        monkeypatch,
+        visibility_controls=[{"name": "CUDA_VISIBLE_DEVICES", "value": "0,1"}],
+    )
+
+    exit_code = main([])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Filters: CUDA_VISIBLE_DEVICES" in captured.out
 
 
 def test_main_color_always_emits_ansi_sequences(backend_factories, monkeypatch, capsys) -> None:
@@ -161,6 +234,8 @@ def test_main_json_output_matches_overview_schema(backend_factories, monkeypatch
     assert payload["apiVersion"] == "omnismi/v1alpha1"
     assert payload["kind"] == "OverviewReport"
     assert payload["command"]["argv"] == ["omnismi", "-o", "json"]
+    assert payload["environment"]["visibility_scope"] == "runtime-scoped"
+    assert payload["environment"]["visibility_controls"] == []
     assert payload["summary"]["device_count"] == 2
     assert payload["summary"]["overall_status"] == "OK"
     assert payload["inventory"]["devices"][0]["state"] == "OK"
@@ -218,8 +293,28 @@ def test_doctor_reports_visibility_mismatch(backend_factories, monkeypatch, caps
     assert exit_code == 0
     assert "Omnismi Doctor v1.0.0 [Host: worker-a17] [Scope: container] [Status: WARN]" in captured.out
     assert "[FINDINGS]" in captured.out
+    assert "[RUNTIME]" in captured.out
     assert "PyTorch reports 1 visible GPU(s), but Omnismi found 2." in captured.out
     assert "Compare `torch.cuda.device_count()` with `omnismi -o json`." in captured.out
+
+
+def test_doctor_mentions_visibility_controls_when_devices_are_missing(
+    backend_factories, monkeypatch, capsys
+) -> None:
+    backend_factories([])
+    _set_fixed_environment(
+        monkeypatch,
+        torch_count=1,
+        visibility_controls=[{"name": "CUDA_VISIBLE_DEVICES", "value": "0"}],
+    )
+
+    exit_code = main(["doctor"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Runtime visibility controls may intentionally limit which devices the current process can see." in captured.out
+    assert "Review active visibility controls such as `CUDA_VISIBLE_DEVICES`" in captured.out
+    assert "visibility_controls=CUDA_VISIBLE_DEVICES=0" in captured.out
 
 
 def test_doctor_reports_partial_device_metrics(backend_factories, monkeypatch, capsys) -> None:

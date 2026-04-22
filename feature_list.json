@@ -1074,13 +1074,17 @@
     {
       "id": "environment-discovery-parity",
       "area": "roadmap",
-      "status": "planned",
+      "status": "verified",
       "title": "Match runtime-visible devices on hosts, containers, and Kubernetes GPU pods",
       "description": "For supported GPU vendors, Omnismi discovery should aim to reflect the visible logical device set of the current execution environment, including GPU containers and device-plugin-managed pods, and explain mismatches through diagnostics.",
       "verification": [
-        "Add docs/tests covering host, container, and runtime-scoped visibility expectations."
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi --wide --no-color",
+        "PYTHONPATH=src python -m omnismi doctor --no-color"
       ],
       "source_of_truth": [
+        "src/omnismi/cli.py",
+        "tests/test_cli_overview.py",
         "docs/cli.md",
         "docs/compatibility.md",
         "app_spec.txt"

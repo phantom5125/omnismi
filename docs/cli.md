@@ -13,6 +13,7 @@ keeping the Python API minimal.
   a cleaner cross-vendor design.
 - Keep structured output first-class for agents, CI, and orchestration.
 - Work consistently on supported GPU hosts, GPU containers, and Kubernetes GPU pods.
+- Surface runtime-scoped visibility controls so container and device-plugin behavior is explainable.
 - Reuse one coherent object model across discovery, diagnostics, and benchmarking.
 
 ## UX principles
@@ -217,8 +218,25 @@ Omnismi v1.1.0-dev [Host: worker-a17] [IP: 192.168.1.50] [Uptime: 12d 4h]
 
 Runtime:
 - execution_scope=container
+- orchestrator=kubernetes
+- visibility_scope=runtime-scoped
 - torch_visible_device_count=2
+- visibility_controls=CUDA_VISIBLE_DEVICES=0,1
 - backend_status=nvml:ok
+```
+
+### `omnismi` with runtime-scoped filters
+
+When the current process is constrained by visibility environment variables, the
+main view should say so explicitly instead of pretending the host-global device
+set is available.
+
+```text
+Omnismi v1.1.0-dev [Host: trainer-pod-01] [IP: 10.42.0.17] [Status: OK]
+ ─────────────────────────────────────────────────────────────────────────────
+ [SYSTEM] CPU: 8% | Mem: 42.0GB/128.0GB | Driver: 550.54.15
+ [VISIBLE] Devices: 2 | Vendors: nvidia(2) | Scope: container | Torch: 2 | Filters: CUDA_VISIBLE_DEVICES
+ ─────────────────────────────────────────────────────────────────────────────
 ```
 
 ### `omnismi` on a no-GPU environment
@@ -261,9 +279,17 @@ Omnismi Doctor v1.1.0-dev [Host: trainer-03] [Scope: container] [Status: WARN]
 - amd / amdsmi: missing_dependency
 - google / tpumonitoring: skipped
 
+[RUNTIME]
+- execution_scope=container
+- orchestrator=kubernetes
+- visibility_scope=runtime-scoped
+- torch_visible_device_count=1
+- visibility_controls=CUDA_VISIBLE_DEVICES=0
+
 [NEXT STEPS]
 - Confirm the current pod/container has GPU device access.
 - Compare `torch.cuda.device_count()` with `omnismi -o json`.
+- Review active visibility controls such as `CUDA_VISIBLE_DEVICES` if you expected more devices.
 ```
 
 ### `omnismi bench bandwidth`
@@ -346,6 +372,10 @@ environment:
   hostname: "worker-a17"
   execution_scope: "container"
   orchestrator: "kubernetes"
+  visibility_scope: "runtime-scoped"
+  visibility_controls:
+    - name: "CUDA_VISIBLE_DEVICES"
+      value: "0,1"
   torch_visible_device_count: 2
 backends:
   - vendor: "nvidia"
@@ -397,10 +427,15 @@ summary:
 - `hostname`
 - `execution_scope`: `host|container|unknown`
 - `orchestrator`: `kubernetes|none|unknown`
+- `visibility_scope`: `host-global|runtime-scoped`
+- `visibility_controls`: active environment variables such as `CUDA_VISIBLE_DEVICES`
 - `torch_visible_device_count`
 
 `torch_visible_device_count` is optional and only populated when Omnismi can
 inspect the relevant runtime safely.
+
+`visibility_scope` should be `runtime-scoped` whenever the current process is
+inside a container-like runtime or explicit device-filter variables are active.
 
 ## Environment support contract
 
@@ -425,6 +460,9 @@ In practical terms:
 - if the current host or container can use a GPU through the supported vendor runtime,
   Omnismi should surface that GPU in the main discovery command
 - if a container only sees a subset of host GPUs, Omnismi should only report that subset
+- if visibility env vars such as `CUDA_VISIBLE_DEVICES`, `NVIDIA_VISIBLE_DEVICES`,
+  or `ROCR_VISIBLE_DEVICES` are active, Omnismi should treat the current process
+  as runtime-scoped and expose only that filtered device set
 - if PyTorch can enumerate visible GPUs in the current environment, Omnismi should
   aim to expose the same visible logical device set for the corresponding supported vendor
 
@@ -440,6 +478,8 @@ For Kubernetes and similar runtime-scoped environments:
 
 - discovery should report only the devices mounted or injected into the current pod/container
 - structured output should indicate that the execution scope is `container` when detectable
+- structured output should expose whether the current process is `host-global` or `runtime-scoped`
+- active visibility-control environment variables should be surfaced in `environment.visibility_controls`
 - host-global assumptions should never leak into the default overview
 
 ## Relationship to Bench

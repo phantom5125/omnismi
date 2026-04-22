@@ -28,6 +28,16 @@ _BACKEND_NAMES = {
 _VISIBLE_STATUS_MATCHED = "MATCHED"
 _VISIBLE_STATUS_MISMATCHED = "MISMATCHED"
 _VISIBLE_STATUS_UNKNOWN = "UNKNOWN"
+_VISIBILITY_CONTROL_ENV_VARS = (
+    "CUDA_VISIBLE_DEVICES",
+    "NVIDIA_VISIBLE_DEVICES",
+    "HIP_VISIBLE_DEVICES",
+    "ROCR_VISIBLE_DEVICES",
+    "GPU_DEVICE_ORDINAL",
+    "TPU_VISIBLE_DEVICES",
+    "TPU_VISIBLE_CHIPS",
+    "TPU_CHIPS_PER_PROCESS_BOUNDS",
+)
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 _STYLE_RESET = "\x1b[0m"
 _STYLE_CODES = {
@@ -174,14 +184,31 @@ def _looks_like_container() -> bool:
 def _detect_environment() -> dict[str, Any]:
     orchestrator = "kubernetes" if os.environ.get("KUBERNETES_SERVICE_HOST") else "none"
     execution_scope = "container" if _looks_like_container() else "host"
+    visibility_controls = _collect_visibility_controls()
+    visibility_scope = "runtime-scoped" if execution_scope == "container" or visibility_controls else "host-global"
 
     return {
         "platform": platform.system().lower(),
         "hostname": socket.gethostname(),
         "execution_scope": execution_scope,
         "orchestrator": orchestrator,
+        "visibility_scope": visibility_scope,
+        "visibility_controls": visibility_controls,
         "torch_visible_device_count": _torch_visible_device_count(),
     }
+
+
+def _collect_visibility_controls() -> list[dict[str, str]]:
+    controls: list[dict[str, str]] = []
+
+    for name in _VISIBILITY_CONTROL_ENV_VARS:
+        value = os.environ.get(name)
+        if value is None:
+            continue
+        normalized = value.strip() or "<empty>"
+        controls.append({"name": name, "value": normalized})
+
+    return controls
 
 
 def _resolve_primary_ip() -> str | None:
@@ -492,6 +519,7 @@ def build_doctor_report(args: argparse.Namespace, argv: list[str]) -> dict[str, 
     backends = overview_report["backends"]
     devices = overview_report["inventory"]["devices"]
     torch_count = environment.get("torch_visible_device_count")
+    visibility_controls = environment.get("visibility_controls", [])
     mismatch = summary["visibility_status"] == _VISIBLE_STATUS_MISMATCHED
 
     if mismatch and torch_count is not None:
@@ -509,6 +537,14 @@ def build_doctor_report(args: argparse.Namespace, argv: list[str]) -> dict[str, 
                 "Confirm the current host, container, or pod has GPU device access.",
                 "Compare `torch.cuda.device_count()` with `omnismi -o json`.",
             ]
+        )
+
+    if visibility_controls and (mismatch or summary["device_count"] == 0):
+        possible_causes.append(
+            "Runtime visibility controls may intentionally limit which devices the current process can see."
+        )
+        next_steps.append(
+            "Review active visibility controls such as `CUDA_VISIBLE_DEVICES`, `NVIDIA_VISIBLE_DEVICES`, or `ROCR_VISIBLE_DEVICES` if you expected more devices."
         )
 
     relevant_missing_dependency = False
@@ -710,6 +746,29 @@ def _format_rate(value: float | None) -> str:
     return f"{_format_bytes_compact(int(value))}/s"
 
 
+def _format_visibility_controls(
+    controls: list[dict[str, str]],
+    *,
+    include_values: bool,
+) -> str:
+    if not controls:
+        return "none"
+
+    parts: list[str] = []
+    for control in controls:
+        if include_values:
+            parts.append(f"{control['name']}={control['value']}")
+        else:
+            parts.append(control["name"])
+    return "; ".join(parts)
+
+
+def _format_optional_count(value: int | None) -> str:
+    if value is None:
+        return "--"
+    return str(value)
+
+
 def _format_load_bar(value: float | None, *, enabled: bool) -> str:
     if value is None:
         return "[     ]"
@@ -881,6 +940,7 @@ def _render_overview_table(report: dict[str, Any], wide: bool, color_mode: str) 
     system = report["system"]
     summary = report["summary"]
     devices = report["inventory"]["devices"]
+    visibility_controls = environment.get("visibility_controls", [])
     backend_summary = " ".join(
         f"{item['backend']}:{item['status']}" for item in report["backends"]
     ) or "none"
@@ -934,6 +994,10 @@ def _render_overview_table(report: dict[str, Any], wide: bool, color_mode: str) 
         visible_parts.append(f"Backends: {backend_summary}")
     elif environment.get("torch_visible_device_count") is not None:
         visible_parts.append(f"Torch: {environment['torch_visible_device_count']}")
+    if visibility_controls and not wide:
+        visible_parts.append(
+            f"Filters: {_format_visibility_controls(visibility_controls, include_values=False)}"
+        )
 
     lines = [
         " ".join(header_parts),
@@ -959,13 +1023,16 @@ def _render_overview_table(report: dict[str, Any], wide: bool, color_mode: str) 
         lines.append(" No supported accelerators are visible in the current runtime.")
 
     warnings = list(summary["warnings"])
-    if wide and environment.get("torch_visible_device_count") is not None:
+    if wide:
         lines.extend(
             [
                 "",
                 "Runtime:",
                 f"- execution_scope={environment['execution_scope']}",
-                f"- torch_visible_device_count={environment['torch_visible_device_count']}",
+                f"- orchestrator={environment['orchestrator']}",
+                f"- visibility_scope={environment['visibility_scope']}",
+                f"- torch_visible_device_count={_format_optional_count(environment.get('torch_visible_device_count'))}",
+                f"- visibility_controls={_format_visibility_controls(visibility_controls, include_values=True)}",
                 f"- backend_status={backend_summary}",
             ]
         )
@@ -998,6 +1065,7 @@ def _render_overview_table(report: dict[str, Any], wide: bool, color_mode: str) 
 def _render_doctor_table(report: dict[str, Any], verbose: bool, *, color_mode: str) -> str:
     environment = report["environment"]
     summary = report["summary"]
+    visibility_controls = environment.get("visibility_controls", [])
     color_enabled = _supports_color(color_mode=color_mode)
     separator = " " + _style("─" * 79, color="blue", dim=True, enabled=color_enabled)
     lines = [
@@ -1029,6 +1097,18 @@ def _render_doctor_table(report: dict[str, Any], verbose: bool, *, color_mode: s
             if backend["reason"]:
                 detail += f'  reason="{backend["reason"]}"'
             lines.append(detail)
+
+    lines.extend(
+        [
+            "",
+            _render_heading("[RUNTIME]", color_enabled=color_enabled),
+            f"- execution_scope={environment['execution_scope']}",
+            f"- orchestrator={environment['orchestrator']}",
+            f"- visibility_scope={environment['visibility_scope']}",
+            f"- torch_visible_device_count={_format_optional_count(environment.get('torch_visible_device_count'))}",
+            f"- visibility_controls={_format_visibility_controls(visibility_controls, include_values=True)}",
+        ]
+    )
 
     if report["next_steps"]:
         lines.extend(["", _render_heading("[NEXT STEPS]", color_enabled=color_enabled)])
