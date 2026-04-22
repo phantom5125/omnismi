@@ -30,6 +30,33 @@ print(f"has_gpu={has_gpu}")
 print(f"max_memory_bytes={max_memory_bytes}")
 ```
 
+## CLI Quick Start
+
+Inspect the current runtime with the human-friendly main entry:
+
+```bash
+omnismi
+```
+
+Show a wider machine summary:
+
+```bash
+omnismi --wide
+```
+
+Emit machine-readable output for agents or automation:
+
+```bash
+omnismi -o json
+omnismi -o yaml
+```
+
+Run the same CLI through the module entrypoint if needed:
+
+```bash
+python -m omnismi
+```
+
 ## Install
 
 Omnismi core is lightweight and has no mandatory vendor dependency.
@@ -167,6 +194,7 @@ if dev is not None:
 - API and usage docs: `docs/`
 - Build docs locally: `mkdocs serve`
 - GPU parity validation: `python -m omnismi.validation.parity --vendor nvidia --samples 3`
+- CLI design and current discovery command: `docs/cli.md`
 
 ## Local Validation
 

@@ -59,6 +59,9 @@ Homepage = "https://github.com/omnismi/omnismi"
 Repository = "https://github.com/omnismi/omnismi"
 Documentation = "https://github.com/omnismi/omnismi/tree/main/docs"
 
+[project.scripts]
+omnismi = "omnismi.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

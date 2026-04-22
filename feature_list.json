@@ -1050,13 +1050,17 @@
     {
       "id": "cli-overview",
       "area": "roadmap",
-      "status": "planned",
+      "status": "verified",
       "title": "Add a default cross-vendor machine overview CLI",
       "description": "Make `omnismi` return a modern machine summary similar in spirit to vendor SMI tools while keeping the default view human-first, portable, concise, and automation-friendly.",
       "verification": [
-        "Add CLI/docs/tests for the main discovery command and structured `table/json/yaml` output."
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py"
       ],
       "source_of_truth": [
+        "src/omnismi/cli.py",
+        "src/omnismi/__main__.py",
+        "tests/test_cli_overview.py",
+        "pyproject.toml",
         "docs/cli.md",
         "docs/roadmap.md",
         "app_spec.txt"

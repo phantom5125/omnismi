@@ -1,8 +1,10 @@
 # CLI
 
-This page defines the planned Omnismi CLI surface before full implementation
-lands. The CLI is intended to make Omnismi immediately useful in terminals,
-containers, and automation, while keeping the Python API minimal.
+This page defines the Omnismi CLI surface. The main `omnismi` discovery command
+is implemented today; richer diagnostic, benchmarking, and spec-validation
+layers remain planned as the CLI grows. The CLI is intended to make Omnismi
+immediately useful in terminals, containers, and automation, while keeping the
+Python API minimal.
 
 ## Design goals
 
