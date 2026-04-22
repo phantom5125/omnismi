@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-03-12",
+  "updated_at": "2026-04-22",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -1048,6 +1048,36 @@
       ]
     },
     {
+      "id": "cli-overview",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Add a default cross-vendor machine overview CLI",
+      "description": "Make `omnismi` return a modern machine summary similar in spirit to vendor SMI tools while keeping the default view human-first, portable, concise, and automation-friendly.",
+      "verification": [
+        "Add CLI/docs/tests for the main discovery command and structured `table/json/yaml` output."
+      ],
+      "source_of_truth": [
+        "docs/cli.md",
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "environment-discovery-parity",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Match runtime-visible devices on hosts, containers, and Kubernetes GPU pods",
+      "description": "For supported GPU vendors, Omnismi discovery should aim to reflect the visible logical device set of the current execution environment, including GPU containers and device-plugin-managed pods, and explain mismatches through diagnostics.",
+      "verification": [
+        "Add docs/tests covering host, container, and runtime-scoped visibility expectations."
+      ],
+      "source_of_truth": [
+        "docs/cli.md",
+        "docs/compatibility.md",
+        "app_spec.txt"
+      ]
+    },
+    {
       "id": "google-tpu-direct-parity",
       "area": "roadmap",
       "status": "planned",
@@ -1059,6 +1089,49 @@
       "source_of_truth": [
         "docs/roadmap.md",
         "docs/validation.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "machine-profile-report",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Add a normalized machine profile and spec report surface",
+      "description": "Expose a CLI-first report that combines detected accelerator inventory with curated architecture-profile metadata such as capacity, bandwidth class, and peak throughput hints.",
+      "verification": [
+        "Add CLI/docs/tests for the report surface and architecture-profile registry."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "hardware-spec-validation-cli",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Validate expected hardware specs against detected and measured signals",
+      "description": "Add a vendor-agnostic CLI workflow that compares expected SKU or profile assumptions against detected memory, runtime state, and benchmark evidence, then emits PASS/WARN/FAIL style outcomes.",
+      "verification": [
+        "Add CLI/docs/tests for spec validation reports and failure classification."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "benchmark-cli",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Add portable CLI benchmarks for bandwidth and compute sanity checks",
+      "description": "Provide compact, reproducible benchmark probes that can measure sustained memory bandwidth, allocation pressure, and basic compute throughput without depending on vendor sample suites, with `table`, `json`, and `yaml` outputs sharing one report schema.",
+      "verification": [
+        "Add CLI/docs/tests for portable benchmark commands and result export."
+      ],
+      "source_of_truth": [
+        "docs/bench.md",
+        "docs/roadmap.md",
         "app_spec.txt"
       ]
     },

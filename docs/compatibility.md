@@ -20,6 +20,33 @@ Omnismi normalizes values but does not hide platform/runtime constraints.
 | Windows | Experimental | No official v1.x guarantee |
 | macOS | Experimental | No official v1.x guarantee |
 
+## Environment support goals
+
+Omnismi aims to work not only on bare hosts, but also in the execution contexts
+where accelerators are commonly consumed by applications and agents.
+
+| Execution context | Goal | Notes |
+|---|---|---|
+| Supported GPU host | First-class | Primary validation path |
+| Supported GPU container | First-class | Must reflect the container-visible device set |
+| Kubernetes GPU pod / device-plugin environment | First-class | Must behave like the current pod sees, not like the whole host |
+| CPU-only host or container | Safe empty result | No-device output is valid and should not be treated as a failure |
+
+### Discovery parity expectation
+
+For supported GPU vendors, Omnismi discovery should aim to match the visible
+logical device set of the current execution environment.
+
+In practice, this means:
+
+- if the current container only sees a subset of host GPUs, Omnismi should only report that subset
+- if the runtime can use a visible GPU, Omnismi should aim to surface it in the discovery layer
+- if PyTorch can enumerate visible GPUs in the current environment, Omnismi should aim to expose the same visible logical device set for the corresponding supported vendor
+
+When Omnismi cannot match that expectation, the preferred behavior is to report
+the mismatch explicitly through diagnostics rather than silently returning
+misleading host-global data.
+
 ## Vendor/runtime matrix (v1 baseline)
 
 | Vendor | Runtime/Driver | Architecture families | Tier |

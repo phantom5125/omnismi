@@ -39,3 +39,7 @@ Omnismi `1.x` focuses on a small stable contract:
 - `gpu(index)`
 - `GPU.info()`
 - `GPU.metrics()`
+
+Planned CLI layers such as `omnismi`, `omnismi doctor`, and `omnismi bench` are
+documented separately so discovery, diagnostics, and benchmarking can evolve
+without bloating the minimal Python API.

@@ -54,9 +54,29 @@ Current non-goals
 - Expanding the public API with scheduler/framework-specific helpers before the core contract is stable.
 - Hiding platform/runtime limitations behind fake values.
 
+Environment compatibility goals
+- Discovery and diagnostics should work on supported GPU hosts, GPU containers,
+  and Kubernetes device-plugin environments without pretending the process can
+  see more devices than the current runtime actually exposes.
+- For supported GPU vendors, if the current runtime can enumerate visible GPUs,
+  Omnismi should aim to expose the same visible logical device set in the
+  discovery layer, or explain mismatches clearly through diagnostics.
+
 Planned frontier
 - More hardware validation evidence for existing NVIDIA and AMD adapters.
 - Better backend diagnostics and debug visibility.
+- A default `omnismi` CLI experience that gives a modern, cross-vendor machine
+  summary similar in spirit to `nvidia-smi`, but cleaner and more
+  automation-friendly.
+- The main CLI entry should be human-first by default: concise terminal summary
+  first, explicit `json`/`yaml` output on demand, and deeper detail moved into
+  `--wide`, `doctor`, `bench`, and `validate-spec`.
+- CLI-first machine profile and spec-validation workflows that can confirm whether
+  detected hardware matches expected capacity, bandwidth, and throughput classes.
+- Vendor-agnostic benchmark probes for trustable memory-bandwidth and compute
+  sanity checks, kept separate from vendor sample applications.
+- Future CLI/report surfaces should keep one stable machine-readable object model
+  across `json` and `yaml`, with human table output as a projection layer.
 - Future Intel/Apple adapter work.
 - Possible later review of scheduler/runtime integration helpers after the core observability layer is mature.
 

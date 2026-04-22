@@ -9,6 +9,8 @@ nav:
   - Home: index.md
   - Why Omnismi: why-omnismi.md
   - API: api.md
+  - CLI: cli.md
+  - Bench: bench.md
   - Compatibility: compatibility.md
   - Validation: validation.md
   - Roadmap: roadmap.md
