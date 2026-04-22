@@ -1038,9 +1038,10 @@
       "area": "roadmap",
       "status": "verified",
       "title": "Improve backend diagnostics and debug visibility",
-      "description": "Add more explicit diagnostics for import failures, partial metric availability, and environment drift without weakening graceful defaults.",
+      "description": "Add more explicit diagnostics for import failures, partial metric availability, and environment drift without weakening graceful defaults, while keeping the terminal output readable and color-aware.",
       "verification": [
-        "PYTHONPATH=src pytest -q tests/test_cli_overview.py"
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi doctor --color always"
       ],
       "source_of_truth": [
         "src/omnismi/cli.py",
@@ -1055,9 +1056,10 @@
       "area": "roadmap",
       "status": "verified",
       "title": "Add a default cross-vendor machine overview CLI",
-      "description": "Make `omnismi` return a modern machine summary similar in spirit to vendor SMI tools while keeping the default view human-first, portable, concise, and automation-friendly.",
+      "description": "Make `omnismi` return a modern machine summary similar in spirit to vendor SMI tools while keeping the default view human-first, portable, concise, automation-friendly, color-aware, and stable on dense multi-GPU nodes.",
       "verification": [
-        "PYTHONPATH=src pytest -q tests/test_cli_overview.py"
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi --color always"
       ],
       "source_of_truth": [
         "src/omnismi/cli.py",

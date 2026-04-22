@@ -114,6 +114,7 @@ These flags should be shared across `bandwidth`, `matmul`, and `suite` where rel
 - `--repeats INT`
 - `-o, --output table|json|yaml`
 - `--quiet`
+- `--color auto|always|never`
 - `--no-color`
 - `--include-samples`
 - `--warn-below-ratio FLOAT`

@@ -22,6 +22,9 @@ keeping the Python API minimal.
   a terminal, not for a machine parser.
 - Modern default view: favor concise sections, clear status signals, and
   normalized units over legacy dense text dumps.
+- Visual hierarchy matters: use clear blocks, separators, compact rows, and
+  optional color so the screen feels like an operational dashboard rather than
+  a raw debug dump.
 - Cross-vendor wording: avoid vendor-specific jargon in the default view when a
   portable term exists.
 - Honest degradation: when data is missing, say why instead of inventing values.
@@ -52,7 +55,7 @@ Main-entry rules:
 - do not auto-switch to `json` just because stdout is redirected
 - keep the zero-flag experience useful on hosts, containers, and no-GPU environments
 - favor a short, high-signal summary over a complete dump
-- grow the experience with flags such as `--wide`, `--watch`, and `-o`
+- grow the experience with flags such as `--wide`, `--watch`, `--color`, and `-o`
 - do not require a redundant `overview` subcommand for the main summary path
 
 ### `omnismi doctor`
@@ -72,6 +75,8 @@ Recommended common flags:
 - `--vendor nvidia|amd|google`
 - `-o, --output table|json|yaml`
 - `--verbose`
+- `--color auto|always|never`
+- `--no-color`
 
 ### `omnismi bench`
 
@@ -132,6 +137,8 @@ Presentation rules:
 - reserve backend-level detail for the runtime or warnings blocks
 - use short status words: `OK`, `PARTIAL`, `ERROR`, `EMPTY`
 - avoid raw stack traces or vendor exception class names in the default view
+- keep the default row compact enough to remain usable on 8, 32, and 64-device nodes
+- let color help scanability, but never make it required to understand the screen
 
 Recommended default device columns:
 
@@ -174,15 +181,20 @@ These previews are intentionally concrete so implementation work has a visible U
 This is the primary human-facing entrypoint.
 
 ```text
-Omnismi 1.1.0-dev  host=worker-a17  env=container  status=OK
-Visible accelerators: 2  vendors=nvidia  scope=runtime-visible
+Omnismi v1.1.0-dev [Host: worker-a17] [IP: 192.168.1.50] [Uptime: 12d 4h]
+ ─────────────────────────────────────────────────────────────────────────────
+ [SYSTEM] CPU: 12% | Mem: 128.0GB/512.0GB | Driver: 550.54.15
+ [VISIBLE] Devices: 2 | Vendors: nvidia(2) | Scope: container | Torch: 2
+ ─────────────────────────────────────────────────────────────────────────────
 
-INDEX  VENDOR  NAME               MEM            UTIL  TEMP  POWER  STATE
-0      nvidia  NVIDIA H100 PCIe   12.5 / 80.0GB  71%   58C   246W   OK
-1      nvidia  NVIDIA H100 PCIe   11.9 / 80.0GB  65%   56C   239W   OK
+  ID  NAME               TEMP   LOAD               MEMORY  POWER  STATE
+┌────────────────────────────────────────────────────────────────────────────┐
+│  0  NVIDIA H100 PCIe  58°C  [|||| ]  12.0GB / 80.0GB  246W   OK         │
+│  1  NVIDIA H100 PCIe  57°C  [|||| ]  13.0GB / 80.0GB  245W   OK         │
+└────────────────────────────────────────────────────────────────────────────┘
 
 Tips:
-- Run `omnismi --wide` for more columns.
+- Run `omnismi --wide` for driver and runtime detail.
 - Run `omnismi doctor` if visibility or metrics look wrong.
 ```
 
@@ -191,20 +203,22 @@ Tips:
 Wide mode should add context without becoming a diagnostics dump.
 
 ```text
-Omnismi 1.1.0-dev  host=worker-a17  env=container  orchestrator=kubernetes  status=PARTIAL
-Visible accelerators: 2  vendors=nvidia  backends=nvml:ok amdsmi:missing tpumonitoring:skip
+Omnismi v1.1.0-dev [Host: worker-a17] [IP: 192.168.1.50] [Uptime: 12d 4h]
+ ─────────────────────────────────────────────────────────────────────────────
+ [SYSTEM] CPU: 12% | Mem: 128.0GB/512.0GB | Driver: 550.54.15
+ [VISIBLE] Devices: 2 | Vendors: nvidia(2) | Scope: container | Backends: nvml:ok
+ ─────────────────────────────────────────────────────────────────────────────
 
-INDEX  VENDOR  NAME               UUID       DRIVER     MEM            UTIL  TEMP  POWER  CORECLK  MEMCLK  STATE
-0      nvidia  NVIDIA H100 PCIe   GPU-1234   550.54.15  12.5 / 80.0GB  71%   58C   246W   1830MHz  1593MHz OK
-1      nvidia  NVIDIA H100 PCIe   GPU-5678   550.54.15  11.9 / 80.0GB  65%   56C   239W   1807MHz  1593MHz OK
+  ID  NAME               TEMP   LOAD                  MEMORY  POWER  DRIVER     STATE
+┌───────────────────────────────────────────────────────────────────────────────────────┐
+│  0  NVIDIA H100 PCIe  58°C  [|||| ]  12.0GB / 80.0GB (15%)  246W  550.54.15  OK    │
+│  1  NVIDIA H100 PCIe  57°C  [|||| ]  13.0GB / 80.0GB (16%)  245W  550.54.15  OK    │
+└───────────────────────────────────────────────────────────────────────────────────────┘
 
 Runtime:
 - execution_scope=container
 - torch_visible_device_count=2
-- backend_status=nvidia:ok amd:missing_dependency google:skip
-
-Warnings:
-- AMD backend dependency is not installed in this environment.
+- backend_status=nvml:ok
 ```
 
 ### `omnismi` on a no-GPU environment
@@ -212,8 +226,11 @@ Warnings:
 No-device results should still feel intentional and useful.
 
 ```text
-Omnismi 1.1.0-dev  host=ci-runner-12  env=container  status=EMPTY
-Visible accelerators: 0
+Omnismi v1.1.0-dev [Host: ci-runner-12] [Status: EMPTY]
+ ─────────────────────────────────────────────────────────────────────────────
+ [SYSTEM] CPU: -- | Mem: -- | Driver: Unavailable
+ [VISIBLE] Devices: 0 | Vendors: none | Scope: container
+ ─────────────────────────────────────────────────────────────────────────────
 
 No supported accelerators are visible in the current runtime.
 
@@ -227,23 +244,24 @@ Hints:
 Doctor mode should explain problems in plain language before surfacing raw details.
 
 ```text
-Omnismi Doctor 1.1.0-dev  host=trainer-03  env=container  status=WARN
+Omnismi Doctor v1.1.0-dev [Host: trainer-03] [Scope: container] [Status: WARN]
+ ─────────────────────────────────────────────────────────────────────────────
+ [FINDINGS]
 
-Findings:
 - PyTorch reports 1 visible NVIDIA GPU, but Omnismi found 0.
 - NVIDIA backend import succeeded, but device enumeration failed.
 - AMD backend is not installed in this environment.
 
-Possible causes:
+[POSSIBLE CAUSES]
 - The container runtime mounted CUDA userspace but not NVML device access.
 - Permissions or driver/runtime injection are incomplete.
 
-Backend details:
+[BACKENDS]
 - nvidia / nvml: error  reason="nvmlDeviceGetCount failed"
 - amd / amdsmi: missing_dependency
 - google / tpumonitoring: skipped
 
-Next steps:
+[NEXT STEPS]
 - Confirm the current pod/container has GPU device access.
 - Compare `torch.cuda.device_count()` with `omnismi -o json`.
 ```
@@ -264,6 +282,25 @@ Summary:
 - Run `omnismi bench bandwidth -o yaml` to save the full report.
 ```
 
+## Scaling rules for large accelerator counts
+
+The default overview must remain usable on dense nodes.
+
+Guidelines:
+
+- keep one compact device row per accelerator in the default view
+- avoid default columns that grow with vendor-specific metadata
+- use `--wide` for extra detail instead of bloating the main row
+- preserve stable ordering by Omnismi global index
+- favor vertical scrolling over horizontally unreadable tables on 32 and 64-device hosts
+- shrink name width and low-priority columns before allowing the table to become unreadable
+
+Future CLI extensions may add optional sections for:
+
+- top processes by accelerator memory use
+- topology or affinity summaries
+- condensed vendor-group summaries ahead of the per-device table
+
 ## Rendering behavior
 
 The table renderer should behave predictably across terminal sizes.
@@ -273,12 +310,14 @@ The table renderer should behave predictably across terminal sizes.
 - keep the header and warnings blocks
 - drop low-priority columns before truncating critical ones
 - prioritize `INDEX`, `NAME`, `MEM`, `UTIL`, and `STATE`
+- allow `TEMP`, `POWER`, and `DRIVER` to disappear before critical columns do
 
 ### Color and symbols
 
 - color is additive, not required for comprehension
 - the ASCII words `OK`, `PARTIAL`, `WARN`, `FAIL`, and `EMPTY` should remain the core status contract
 - avoid relying on Unicode icons for meaning
+- support `--color auto|always|never` with `--no-color` as an alias for `never`
 
 ### Truncation rules
 

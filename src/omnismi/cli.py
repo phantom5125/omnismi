@@ -6,6 +6,8 @@ import argparse
 import json
 import os
 import platform
+import re
+import shutil
 import socket
 import sys
 import time
@@ -26,6 +28,19 @@ _BACKEND_NAMES = {
 _VISIBLE_STATUS_MATCHED = "MATCHED"
 _VISIBLE_STATUS_MISMATCHED = "MISMATCHED"
 _VISIBLE_STATUS_UNKNOWN = "UNKNOWN"
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+_STYLE_RESET = "\x1b[0m"
+_STYLE_CODES = {
+    "bold": "\x1b[1m",
+    "dim": "\x1b[2m",
+    "cyan": "\x1b[36m",
+    "blue": "\x1b[34m",
+    "green": "\x1b[32m",
+    "yellow": "\x1b[33m",
+    "red": "\x1b[31m",
+    "magenta": "\x1b[35m",
+}
+_NET_IO_SAMPLE: tuple[float, int, int] | None = None
 
 
 def _build_common_scope_group(parser: argparse.ArgumentParser) -> None:
@@ -46,6 +61,22 @@ def _build_common_scope_group(parser: argparse.ArgumentParser) -> None:
         "--vendor",
         choices=["nvidia", "amd", "google"],
         help="Restrict output to one vendor.",
+    )
+
+
+def _add_color_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--color",
+        choices=["auto", "always", "never"],
+        default="auto",
+        help="Control ANSI color in human-readable output.",
+    )
+    parser.add_argument(
+        "--no-color",
+        action="store_const",
+        const="never",
+        dest="color",
+        help="Alias for `--color never`.",
     )
 
 
@@ -72,11 +103,7 @@ def build_overview_parser() -> argparse.ArgumentParser:
         default="table",
         help="Choose a human-readable table or structured output format.",
     )
-    parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Reserved for future color control. Current output is plain text.",
-    )
+    _add_color_arguments(parser)
     return parser
 
 
@@ -104,11 +131,7 @@ def build_root_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show all backend details even when there are no findings.",
     )
-    doctor_parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Reserved for future color control. Current output is plain text.",
-    )
+    _add_color_arguments(doctor_parser)
 
     bench_parser = subparsers.add_parser(
         "bench",
@@ -161,6 +184,34 @@ def _detect_environment() -> dict[str, Any]:
     }
 
 
+def _resolve_primary_ip() -> str | None:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            address = sock.getsockname()[0]
+            if address:
+                return address
+    except OSError:
+        pass
+
+    try:
+        address = socket.gethostbyname(socket.gethostname())
+    except OSError:
+        return None
+
+    if address.startswith("127."):
+        return None
+    return address
+
+
+def _try_import_psutil() -> Any | None:
+    try:
+        import psutil  # type: ignore
+    except Exception:
+        return None
+    return psutil
+
+
 def _torch_visible_device_count() -> int | None:
     try:
         import torch
@@ -209,6 +260,73 @@ def _collect_backend_report() -> list[dict[str, Any]]:
     return reports
 
 
+def _collect_system_metrics(
+    devices: list[dict[str, Any]],
+    backends: list[dict[str, Any]],
+) -> dict[str, Any]:
+    global _NET_IO_SAMPLE
+
+    metrics = {
+        "ip_address": _resolve_primary_ip(),
+        "uptime_seconds": None,
+        "cpu_percent": None,
+        "memory_used_bytes": None,
+        "memory_total_bytes": None,
+        "net_rx_bytes_per_s": None,
+        "net_tx_bytes_per_s": None,
+        "driver_label": _driver_label(devices=devices, backends=backends),
+    }
+
+    psutil = _try_import_psutil()
+    if psutil is None:
+        return metrics
+
+    try:
+        metrics["cpu_percent"] = float(psutil.cpu_percent(interval=None))
+    except Exception:
+        pass
+
+    try:
+        memory = psutil.virtual_memory()
+        metrics["memory_used_bytes"] = int(memory.used)
+        metrics["memory_total_bytes"] = int(memory.total)
+    except Exception:
+        pass
+
+    try:
+        metrics["uptime_seconds"] = max(0.0, time.time() - float(psutil.boot_time()))
+    except Exception:
+        pass
+
+    try:
+        counters = psutil.net_io_counters()
+        now = time.time()
+        rx_total = int(counters.bytes_recv)
+        tx_total = int(counters.bytes_sent)
+        if _NET_IO_SAMPLE is not None:
+            previous_time, previous_rx, previous_tx = _NET_IO_SAMPLE
+            elapsed = now - previous_time
+            if elapsed > 0.0:
+                metrics["net_rx_bytes_per_s"] = max(0.0, (rx_total - previous_rx) / elapsed)
+                metrics["net_tx_bytes_per_s"] = max(0.0, (tx_total - previous_tx) / elapsed)
+        _NET_IO_SAMPLE = (now, rx_total, tx_total)
+    except Exception:
+        pass
+
+    return metrics
+
+
+def _driver_label(devices: list[dict[str, Any]], backends: list[dict[str, Any]]) -> str:
+    drivers = sorted({device["driver"] for device in devices if device["driver"]})
+    if len(drivers) == 1:
+        return drivers[0]
+    if len(drivers) > 1:
+        return "Mixed"
+    if any(item["status"] == "ok" for item in backends):
+        return "Visible"
+    return "Unavailable"
+
+
 def _device_state(info: dict[str, Any], metrics: dict[str, Any]) -> str:
     useful_metric_values = [
         metrics.get("utilization_percent"),
@@ -240,7 +358,7 @@ def _format_percent(value: float | None) -> str:
 def _format_temperature(value: float | None) -> str:
     if value is None:
         return "-"
-    return f"{value:.0f}C"
+    return f"{value:.0f}\N{DEGREE SIGN}C"
 
 
 def _format_power(value: float | None) -> str:
@@ -307,6 +425,7 @@ def build_overview_report(args: argparse.Namespace, argv: list[str]) -> dict[str
     backend_reports = _collect_backend_report()
     all_devices = [_build_device_record(device) for device in omi.gpus()]
     devices, warnings = _filter_devices(all_devices, args)
+    system_metrics = _collect_system_metrics(devices=devices, backends=backend_reports)
 
     torch_count = environment["torch_visible_device_count"]
     if torch_count is None:
@@ -344,6 +463,7 @@ def build_overview_report(args: argparse.Namespace, argv: list[str]) -> dict[str
             "output": args.output,
         },
         "environment": environment,
+        "system": system_metrics,
         "backends": backend_reports,
         "inventory": {
             "devices": devices,
@@ -483,96 +603,360 @@ def _render_table(headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
-def _render_overview_table(report: dict[str, Any], wide: bool) -> str:
+def _supports_color(color_mode: str) -> bool:
+    if color_mode == "never":
+        return False
+    if color_mode == "always":
+        return True
+    if not sys.stdout.isatty():
+        return False
+    if os.environ.get("TERM", "") == "dumb":
+        return False
+    return True
+
+
+def _plain_text_width(value: str) -> int:
+    return len(_ANSI_RE.sub("", value))
+
+
+def _style(
+    value: str,
+    *,
+    color: str | None = None,
+    bold: bool = False,
+    dim: bool = False,
+    enabled: bool = False,
+) -> str:
+    if not enabled:
+        return value
+
+    codes: list[str] = []
+    if bold:
+        codes.append(_STYLE_CODES["bold"])
+    if dim:
+        codes.append(_STYLE_CODES["dim"])
+    if color is not None:
+        codes.append(_STYLE_CODES[color])
+    if not codes:
+        return value
+    return "".join(codes) + value + _STYLE_RESET
+
+
+def _status_color(status: str) -> str | None:
+    if status in {"OK", "PASS", _VISIBLE_STATUS_MATCHED}:
+        return "green"
+    if status in {"WARN", "PARTIAL", _VISIBLE_STATUS_UNKNOWN, "EMPTY"}:
+        return "yellow"
+    if status in {"FAIL", "ERROR", _VISIBLE_STATUS_MISMATCHED}:
+        return "red"
+    return None
+
+
+def _format_bytes_compact(value: int | None) -> str:
+    if value is None:
+        return "--"
+
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    size = float(value)
+    for unit in units:
+        if size < 1024.0 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(size)}{unit}"
+            return f"{size:.1f}{unit}"
+        size /= 1024.0
+    return f"{size:.1f}PB"
+
+
+def _format_uptime_compact(value: float | None) -> str | None:
+    if value is None:
+        return None
+
+    remaining = int(value)
+    days, remaining = divmod(remaining, 86400)
+    hours, remaining = divmod(remaining, 3600)
+    minutes, _ = divmod(remaining, 60)
+
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or days:
+        parts.append(f"{hours}h")
+    parts.append(f"{minutes}m")
+    return " ".join(parts)
+
+
+def _format_memory_usage(used: int | None, total: int | None) -> str:
+    if used is None and total is None:
+        return "--"
+    if total in (None, 0):
+        return f"{_format_bytes_compact(used)} / --"
+    percent = 0.0 if used is None else (float(used) / float(total)) * 100.0
+    return f"{_format_bytes_compact(used)} / {_format_bytes_compact(total)} ({percent:.0f}%)"
+
+
+def _format_memory_usage_compact(used: int | None, total: int | None, *, include_percent: bool) -> str:
+    if used is None and total is None:
+        return "--"
+    if total in (None, 0):
+        return f"{_format_bytes_compact(used)} / --"
+    if not include_percent:
+        return f"{_format_bytes_compact(used)} / {_format_bytes_compact(total)}"
+    return _format_memory_usage(used, total)
+
+
+def _format_rate(value: float | None) -> str:
+    if value is None:
+        return "--"
+    return f"{_format_bytes_compact(int(value))}/s"
+
+
+def _format_load_bar(value: float | None, *, enabled: bool) -> str:
+    if value is None:
+        return "[     ]"
+
+    percent = max(0.0, min(100.0, float(value)))
+    filled = int(round(percent / 20.0))
+    bar = "[" + ("|" * filled) + (" " * (5 - filled)) + "]"
+    color = "green"
+    if percent >= 85.0:
+        color = "red"
+    elif percent >= 60.0:
+        color = "yellow"
+    return _style(bar, color=color, enabled=enabled)
+
+
+def _truncate_text(value: str, width: int) -> str:
+    if width <= 0:
+        return ""
+    if _plain_text_width(value) <= width:
+        return value
+    if width <= 1:
+        return value[:width]
+    return value[: width - 1] + "…"
+
+
+def _pad_cell(value: str, width: int, *, align: str) -> str:
+    padding = max(0, width - _plain_text_width(value))
+    if align == "right":
+        return (" " * padding) + value
+    if align == "center":
+        left = padding // 2
+        right = padding - left
+        return (" " * left) + value + (" " * right)
+    return value + (" " * padding)
+
+
+def _render_boxed_table(
+    headers: list[str],
+    rows: list[list[str]],
+    *,
+    alignments: list[str],
+) -> str:
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for index, cell in enumerate(row):
+            widths[index] = max(widths[index], _plain_text_width(cell))
+
+    header_line = "  " + "  ".join(
+        _pad_cell(header, widths[index], align="left") for index, header in enumerate(headers)
+    )
+    inner_width = max(
+        _plain_text_width(
+            "  ".join(
+                _pad_cell(row[index], widths[index], align=alignments[index])
+                for index in range(len(headers))
+            )
+        )
+        for row in rows
+    ) if rows else _plain_text_width(
+        "  ".join(_pad_cell(headers[index], widths[index], align="left") for index in range(len(headers)))
+    )
+
+    top = "┌" + ("─" * (inner_width + 2)) + "┐"
+    bottom = "└" + ("─" * (inner_width + 2)) + "┘"
+
+    body_lines = []
+    for row in rows:
+        text = "  ".join(
+            _pad_cell(row[index], widths[index], align=alignments[index])
+            for index in range(len(headers))
+        )
+        padding = " " * (inner_width - _plain_text_width(text))
+        body_lines.append(f"│ {text}{padding} │")
+
+    if not body_lines:
+        body_lines.append(f"│ {'No visible devices'.ljust(inner_width)} │")
+
+    return "\n".join([header_line, top, *body_lines, bottom])
+
+
+def _build_overview_rows(
+    devices: list[dict[str, Any]],
+    *,
+    wide: bool,
+    color_enabled: bool,
+    terminal_width: int,
+) -> tuple[list[str], list[list[str]], list[str]]:
+    if wide:
+        show_temp = terminal_width >= 98
+        show_power = terminal_width >= 90
+        show_driver = terminal_width >= 100
+        name_width = 22 if terminal_width >= 108 else 20 if terminal_width >= 100 else 18
+    else:
+        show_temp = terminal_width >= 84
+        show_power = terminal_width >= 76
+        show_driver = False
+        name_width = 24 if terminal_width >= 104 else 20 if terminal_width >= 88 else 16
+
+    include_memory_percent = terminal_width >= 92
+    headers = ["ID", "NAME"]
+    alignments = ["right", "left"]
+
+    if show_temp:
+        headers.append("TEMP")
+        alignments.append("right")
+    headers.extend(["LOAD", "MEMORY"])
+    alignments.extend(["right", "right"])
+    if show_power:
+        headers.append("POWER")
+        alignments.append("right")
+    if show_driver:
+        headers.append("DRIVER")
+        alignments.append("left")
+    headers.append("STATE")
+    alignments.append("left")
+
+    rows: list[list[str]] = []
+    for device in devices:
+        metrics = device["metrics"]
+        row = [
+            str(device["index"]),
+            _truncate_text(device["name"], name_width),
+        ]
+        if show_temp:
+            row.append(_format_temperature(metrics.get("temperature_c")))
+        row.extend(
+            [
+                _format_load_bar(metrics.get("utilization_percent"), enabled=color_enabled),
+                _format_memory_usage_compact(
+                    metrics.get("memory_used_bytes"),
+                    metrics.get("memory_total_bytes") or device.get("memory_total_bytes"),
+                    include_percent=include_memory_percent,
+                ),
+            ]
+        )
+        if show_power:
+            row.append(_format_power(metrics.get("power_w")))
+        if show_driver:
+            row.append(_truncate_text(device.get("driver") or "--", 12))
+        row.append(
+            _style(
+                device["state"],
+                color=_status_color(device["state"]),
+                bold=device["state"] != "OK",
+                enabled=color_enabled,
+            )
+        )
+        rows.append(row)
+    return headers, rows, alignments
+
+
+def _format_vendor_summary(devices: list[dict[str, Any]]) -> str:
+    if not devices:
+        return "none"
+
+    counts: dict[str, int] = {}
+    for device in devices:
+        vendor = device["vendor"]
+        counts[vendor] = counts.get(vendor, 0) + 1
+    return ", ".join(f"{vendor}({count})" for vendor, count in sorted(counts.items()))
+
+
+def _render_heading(label: str, *, color_enabled: bool) -> str:
+    return _style(label, color="blue", bold=True, enabled=color_enabled)
+
+
+def _render_overview_table(report: dict[str, Any], wide: bool, color_mode: str) -> str:
     environment = report["environment"]
+    system = report["system"]
     summary = report["summary"]
     devices = report["inventory"]["devices"]
     backend_summary = " ".join(
         f"{item['backend']}:{item['status']}" for item in report["backends"]
     ) or "none"
-    vendors = ",".join(sorted({device["vendor"] for device in devices})) or "none"
+    vendors = _format_vendor_summary(devices)
+    color_enabled = _supports_color(color_mode=color_mode)
+    terminal_width = max(72, min(shutil.get_terminal_size((100, 20)).columns - 1, 120))
+    separator = " " + _style("─" * (terminal_width - 1), color="blue", dim=True, enabled=color_enabled)
 
-    header = (
-        f"Omnismi {report['metadata']['omnismi_version']}  "
-        f"host={environment['hostname']}  "
-        f"env={environment['execution_scope']}  "
-        f"status={summary['overall_status']}"
+    header_parts = [
+        _style("Omnismi", color="cyan", bold=True, enabled=color_enabled),
+        f"v{report['metadata']['omnismi_version']}",
+        f"[Host: {environment['hostname']}]",
+    ]
+    if system.get("ip_address") is not None:
+        header_parts.append(f"[IP: {system['ip_address']}]")
+    uptime_text = _format_uptime_compact(system.get("uptime_seconds"))
+    if uptime_text is not None:
+        header_parts.append(f"[Uptime: {uptime_text}]")
+    header_parts.append(
+        f"[Status: {_style(summary['overall_status'], color=_status_color(summary['overall_status']), bold=True, enabled=color_enabled)}]"
     )
-    if wide and environment.get("orchestrator") not in (None, "none"):
-        header = (
-            f"Omnismi {report['metadata']['omnismi_version']}  "
-            f"host={environment['hostname']}  "
-            f"env={environment['execution_scope']}  "
-            f"orchestrator={environment['orchestrator']}  "
-            f"status={summary['overall_status']}"
-        )
-    lines = [header]
 
-    visibility_line = f"Visible accelerators: {summary['device_count']}  vendors={vendors}"
-    if wide:
-        visibility_line += f"  backends={backend_summary}"
+    system_parts: list[str] = []
+    system_parts.append(
+        "CPU: "
+        + (
+            _format_percent(system.get("cpu_percent"))
+            if system.get("cpu_percent") is not None
+            else "--"
+        )
+    )
+    if system.get("memory_total_bytes") is not None:
+        system_parts.append(
+            "Mem: "
+            + f"{_format_bytes_compact(system.get('memory_used_bytes'))}/{_format_bytes_compact(system.get('memory_total_bytes'))}"
+        )
     else:
-        visibility_line += "  scope=runtime-visible"
-    lines.append(visibility_line)
-    lines.append("")
+        system_parts.append("Mem: --")
+    if system.get("net_rx_bytes_per_s") is not None or system.get("net_tx_bytes_per_s") is not None:
+        system_parts.append(
+            f"Net: ↓{_format_rate(system.get('net_rx_bytes_per_s'))} ↑{_format_rate(system.get('net_tx_bytes_per_s'))}"
+        )
+    system_parts.append(f"Driver: {system['driver_label']}")
+
+    visible_parts = [
+        f"Devices: {summary['device_count']}",
+        f"Vendors: {vendors}",
+        f"Scope: {environment['execution_scope']}",
+    ]
+    if wide:
+        visible_parts.append(f"Backends: {backend_summary}")
+    elif environment.get("torch_visible_device_count") is not None:
+        visible_parts.append(f"Torch: {environment['torch_visible_device_count']}")
+
+    lines = [
+        " ".join(header_parts),
+        separator,
+        f" {_render_heading('[SYSTEM]', color_enabled=color_enabled)} " + " | ".join(system_parts),
+        f" {_render_heading('[VISIBLE]', color_enabled=color_enabled)} " + " | ".join(visible_parts),
+        separator,
+        "",
+    ]
 
     if devices:
-        if wide:
-            headers = [
-                "INDEX",
-                "VENDOR",
-                "NAME",
-                "UUID",
-                "DRIVER",
-                "MEM",
-                "UTIL",
-                "TEMP",
-                "POWER",
-                "CORECLK",
-                "MEMCLK",
-                "STATE",
-            ]
-            rows = [
-                [
-                    str(device["index"]),
-                    device["vendor"],
-                    device["name"],
-                    device["uuid"] or "-",
-                    device["driver"] or "-",
-                    _format_memory_pair(
-                        device["metrics"].get("memory_used_bytes"),
-                        device["metrics"].get("memory_total_bytes") or device.get("memory_total_bytes"),
-                    ),
-                    _format_percent(device["metrics"].get("utilization_percent")),
-                    _format_temperature(device["metrics"].get("temperature_c")),
-                    _format_power(device["metrics"].get("power_w")),
-                    _format_clock(device["metrics"].get("core_clock_mhz")),
-                    _format_clock(device["metrics"].get("memory_clock_mhz")),
-                    device["state"],
-                ]
-                for device in devices
-            ]
-        else:
-            headers = ["INDEX", "VENDOR", "NAME", "MEM", "UTIL", "TEMP", "POWER", "STATE"]
-            rows = [
-                [
-                    str(device["index"]),
-                    device["vendor"],
-                    device["name"],
-                    _format_memory_pair(
-                        device["metrics"].get("memory_used_bytes"),
-                        device["metrics"].get("memory_total_bytes") or device.get("memory_total_bytes"),
-                    ),
-                    _format_percent(device["metrics"].get("utilization_percent")),
-                    _format_temperature(device["metrics"].get("temperature_c")),
-                    _format_power(device["metrics"].get("power_w")),
-                    device["state"],
-                ]
-                for device in devices
-            ]
-        lines.append(_render_table(headers=headers, rows=rows))
+        headers, rows, alignments = _build_overview_rows(
+            devices=devices,
+            wide=wide,
+            color_enabled=color_enabled,
+            terminal_width=terminal_width,
+        )
+        styled_headers = [
+            _style(header, color="blue", bold=True, enabled=color_enabled) for header in headers
+        ]
+        lines.append(_render_boxed_table(headers=styled_headers, rows=rows, alignments=alignments))
     else:
-        lines.append("No supported accelerators are visible in the current runtime.")
+        lines.append(" No supported accelerators are visible in the current runtime.")
 
     warnings = list(summary["warnings"])
     if wide and environment.get("torch_visible_device_count") is not None:
@@ -587,13 +971,13 @@ def _render_overview_table(report: dict[str, Any], wide: bool) -> str:
         )
 
     if warnings:
-        lines.extend(["", "Warnings:"])
+        lines.extend(["", _render_heading("Warnings:", color_enabled=color_enabled)])
         lines.extend(f"- {warning}" for warning in warnings)
     elif not devices:
         lines.extend(
             [
                 "",
-                "Hints:",
+                _render_heading("Hints:", color_enabled=color_enabled),
                 "- This is expected on CPU-only environments.",
                 "- Run `omnismi doctor` to inspect backend imports and runtime visibility.",
             ]
@@ -602,8 +986,8 @@ def _render_overview_table(report: dict[str, Any], wide: bool) -> str:
         lines.extend(
             [
                 "",
-                "Tips:",
-                "- Run `omnismi --wide` for more columns.",
+                _render_heading("Tips:", color_enabled=color_enabled),
+                "- Run `omnismi --wide` for driver and runtime detail.",
                 "- Run `omnismi doctor` if visibility or metrics look wrong.",
             ]
         )
@@ -611,18 +995,22 @@ def _render_overview_table(report: dict[str, Any], wide: bool) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _render_doctor_table(report: dict[str, Any], verbose: bool) -> str:
+def _render_doctor_table(report: dict[str, Any], verbose: bool, *, color_mode: str) -> str:
     environment = report["environment"]
     summary = report["summary"]
+    color_enabled = _supports_color(color_mode=color_mode)
+    separator = " " + _style("─" * 79, color="blue", dim=True, enabled=color_enabled)
     lines = [
         (
-            f"Omnismi Doctor {report['metadata']['omnismi_version']}  "
-            f"host={environment['hostname']}  "
-            f"env={environment['execution_scope']}  "
-            f"status={summary['status']}"
+            f"{_style('Omnismi Doctor', color='cyan', bold=True, enabled=color_enabled)} "
+            f"v{report['metadata']['omnismi_version']} "
+            f"[Host: {environment['hostname']}] "
+            f"[Scope: {environment['execution_scope']}] "
+            f"[Status: {_style(summary['status'], color=_status_color(summary['status']), bold=True, enabled=color_enabled)}]"
         ),
         "",
-        "Findings:",
+        separator,
+        _render_heading("[FINDINGS]", color_enabled=color_enabled),
     ]
 
     if report["findings"]:
@@ -631,11 +1019,11 @@ def _render_doctor_table(report: dict[str, Any], verbose: bool) -> str:
         lines.append("- No major discovery or visibility issues were detected.")
 
     if report["possible_causes"]:
-        lines.extend(["", "Possible causes:"])
+        lines.extend(["", _render_heading("[POSSIBLE CAUSES]", color_enabled=color_enabled)])
         lines.extend(f"- {cause}" for cause in report["possible_causes"])
 
     if report["backends"] and (verbose or report["findings"]):
-        lines.extend(["", "Backend details:"])
+        lines.extend(["", _render_heading("[BACKENDS]", color_enabled=color_enabled)])
         for backend in report["backends"]:
             detail = f"- {backend['vendor']} / {backend['backend']}: {backend['status']}"
             if backend["reason"]:
@@ -643,7 +1031,7 @@ def _render_doctor_table(report: dict[str, Any], verbose: bool) -> str:
             lines.append(detail)
 
     if report["next_steps"]:
-        lines.extend(["", "Next steps:"])
+        lines.extend(["", _render_heading("[NEXT STEPS]", color_enabled=color_enabled)])
         lines.extend(f"- {step}" for step in report["next_steps"])
 
     return "\n".join(lines).rstrip() + "\n"
@@ -748,7 +1136,7 @@ def _yaml_scalar(value: Any) -> str:
 
 def _emit_overview(report: dict[str, Any], args: argparse.Namespace) -> str:
     if args.output == "table":
-        return _render_overview_table(report=report, wide=bool(args.wide))
+        return _render_overview_table(report=report, wide=bool(args.wide), color_mode=str(args.color))
     return _render_structured_output(report=report, output_format=args.output)
 
 
@@ -776,7 +1164,13 @@ def _run_overview(args: argparse.Namespace, argv: list[str]) -> int:
 def _run_doctor(args: argparse.Namespace, argv: list[str]) -> int:
     report = build_doctor_report(args=args, argv=argv)
     if args.output == "table":
-        sys.stdout.write(_render_doctor_table(report=report, verbose=bool(args.verbose)))
+        sys.stdout.write(
+            _render_doctor_table(
+                report=report,
+                verbose=bool(args.verbose),
+                color_mode=str(args.color),
+            )
+        )
     else:
         sys.stdout.write(_render_structured_output(report=report, output_format=args.output))
     return 0

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 
 from omnismi.backends.base import BaseBackend
@@ -87,6 +88,23 @@ def _set_fixed_environment(monkeypatch, *, torch_count: int | None = 2) -> None:
             "torch_visible_device_count": torch_count,
         },
     )
+    monkeypatch.setattr(
+        "omnismi.cli._collect_system_metrics",
+        lambda devices, backends: {
+            "ip_address": "192.168.1.50",
+            "uptime_seconds": 12 * 86400 + 4 * 3600,
+            "cpu_percent": 12.0,
+            "memory_used_bytes": 128 * 1024**3,
+            "memory_total_bytes": 512 * 1024**3,
+            "net_rx_bytes_per_s": None,
+            "net_tx_bytes_per_s": None,
+            "driver_label": "550.54.15",
+        },
+    )
+    monkeypatch.setattr(
+        "omnismi.cli.shutil.get_terminal_size",
+        lambda fallback=(100, 20): os.terminal_size((120, 40)),
+    )
 
 
 def test_main_default_overview_table_output(backend_factories, monkeypatch, capsys) -> None:
@@ -97,9 +115,11 @@ def test_main_default_overview_table_output(backend_factories, monkeypatch, caps
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Omnismi 1.0.0  host=worker-a17  env=container  status=OK" in captured.out
-    assert "Visible accelerators: 2  vendors=nvidia  scope=runtime-visible" in captured.out
+    assert "Omnismi v1.0.0 [Host: worker-a17] [IP: 192.168.1.50] [Uptime: 12d 4h 0m] [Status: OK]" in captured.out
+    assert "[SYSTEM] CPU: 12% | Mem: 128.0GB/512.0GB | Driver: 550.54.15" in captured.out
+    assert "[VISIBLE] Devices: 2 | Vendors: nvidia(2) | Scope: container | Torch: 2" in captured.out
     assert "NVIDIA H100 PCIe" in captured.out
+    assert "[||||" in captured.out
     assert "Tips:" in captured.out
 
 
@@ -111,10 +131,22 @@ def test_main_wide_output_adds_runtime_block(backend_factories, monkeypatch, cap
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "orchestrator=kubernetes" in captured.out
+    assert "[VISIBLE] Devices: 2 | Vendors: nvidia(2) | Scope: container | Backends: nvidia:ok" in captured.out
+    assert "DRIVER" in captured.out
     assert "Runtime:" in captured.out
     assert "- execution_scope=container" in captured.out
     assert "backend_status=nvidia:ok" in captured.out
+
+
+def test_main_color_always_emits_ansi_sequences(backend_factories, monkeypatch, capsys) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(monkeypatch)
+
+    exit_code = main(["--color", "always"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "\x1b[" in captured.out
 
 
 def test_main_json_output_matches_overview_schema(backend_factories, monkeypatch, capsys) -> None:
@@ -155,7 +187,7 @@ def test_main_handles_no_visible_devices(backend_factories, monkeypatch, capsys)
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "status=EMPTY" in captured.out
+    assert "[Status: EMPTY]" in captured.out
     assert "No supported accelerators are visible in the current runtime." in captured.out
 
 
@@ -184,7 +216,8 @@ def test_doctor_reports_visibility_mismatch(backend_factories, monkeypatch, caps
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Omnismi Doctor 1.0.0  host=worker-a17  env=container  status=WARN" in captured.out
+    assert "Omnismi Doctor v1.0.0 [Host: worker-a17] [Scope: container] [Status: WARN]" in captured.out
+    assert "[FINDINGS]" in captured.out
     assert "PyTorch reports 1 visible GPU(s), but Omnismi found 2." in captured.out
     assert "Compare `torch.cuda.device_count()` with `omnismi -o json`." in captured.out
 
