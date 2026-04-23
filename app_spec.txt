@@ -76,6 +76,9 @@ Planned frontier
   `--wide`, `doctor`, `bench`, and `validate-spec`.
 - CLI-first machine profile and spec-validation workflows that can confirm whether
   detected hardware matches expected capacity, bandwidth, and throughput classes.
+- The first `validate-spec` slice should stay discovery-first: compare current
+  inventory against curated profiles and explicit runtime context now, then add
+  benchmark evidence later without breaking the report shape.
 - Vendor-agnostic benchmark probes for trustable memory-bandwidth and compute
   sanity checks, kept separate from vendor sample applications.
 - Future CLI/report surfaces should keep one stable machine-readable object model

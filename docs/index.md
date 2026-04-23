@@ -44,6 +44,6 @@ Planned CLI layers such as `omnismi`, `omnismi doctor`, and `omnismi bench` are
 documented separately so discovery, diagnostics, and benchmarking can evolve
 without bloating the minimal Python API.
 
-The main `omnismi` discovery command and `omnismi doctor` are implemented as
-human-friendly terminal tools. Benchmarking and spec-validation layers continue
-to evolve in the CLI docs.
+The main `omnismi` discovery command, `omnismi doctor`, and the first
+`omnismi validate-spec` profile checks are implemented as human-friendly
+terminal tools. Benchmarking continues to evolve in the CLI docs.

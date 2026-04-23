@@ -85,13 +85,30 @@ Run portable accelerator probes. See [Bench](bench.md).
 
 ### `omnismi validate-spec`
 
-Compare discovery output and benchmark results against an expected machine profile.
+Compare current discovery output against a curated machine profile and emit a
+portable `PASS`, `WARN`, `FAIL`, or `INCONCLUSIVE` verdict.
 
 Expected use cases:
 
 - acceptance tests for rented or procured hardware
 - post-incident machine verification
 - fleet qualification in CI or cluster bring-up
+
+Implemented flags:
+
+- `--profile NAME`
+- `--device INDEX`
+- `--all-devices`
+- `--vendor nvidia|amd|google`
+- `-o, --output table|json|yaml`
+- `--verbose`
+- `--color auto|always|never`
+
+Built-in profiles today:
+
+- `h100-pcie-80gb`
+- `mi300x-192gb`
+- `tpu-v5p-32gb`
 
 ## Information layers
 
@@ -308,6 +325,38 @@ Summary:
 - Run `omnismi bench bandwidth -o yaml` to save the full report.
 ```
 
+### `omnismi validate-spec`
+
+The first implementation focuses on inventory- and runtime-based checks rather
+than benchmark evidence. That keeps the workflow useful today while leaving room
+for future `bench` integration.
+
+```text
+Omnismi Validate Spec v1.1.0-dev [Host: worker-a17] [Profile: h100-pcie-80gb] [Status: PASS]
+
+ ─────────────────────────────────────────────────────────────────────────────
+ [PROFILE]
+ - vendor=nvidia
+ - description=NVIDIA H100 PCIe 80GB class accelerator.
+ - expected_memory_total_bytes=80.0GB
+ - memory_class=hbm3
+ - bandwidth_class=h100-pcie-class
+ - visibility_scope=runtime-scoped
+
+ [RESULTS]
+   ID  NAME               VENDOR  MEMORY              VERDICT
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  0  NVIDIA H100 PCIe  nvidia  80.0GB / 80.0GB    PASS                   │
+ │  1  NVIDIA H100 PCIe  nvidia  80.0GB / 80.0GB    PASS                   │
+ └──────────────────────────────────────────────────────────────────────────┘
+
+ [SUMMARY]
+ - pass_count=2
+ - warn_count=0
+ - fail_count=0
+ - inconclusive_count=0
+```
+
 ## Scaling rules for large accelerator counts
 
 The default overview must remain usable on dense nodes.
@@ -414,6 +463,7 @@ summary:
 - `kind`: `OverviewReport`
 - `metadata`: generation metadata
 - `command`: invocation metadata
+- `spec`: requested validation scope
 - `environment`: execution context
 - `backends`: backend availability and import/runtime reasons
 - `inventory`: visible devices and normalized current metrics

@@ -343,3 +343,78 @@ def test_doctor_json_output_uses_doctor_report_schema(
     assert payload["kind"] == "DoctorReport"
     assert payload["summary"]["status"] == "OK"
     assert payload["summary"]["finding_count"] == 0
+
+
+def test_validate_spec_passes_for_matching_profile(
+    backend_factories, monkeypatch, capsys
+) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(monkeypatch)
+
+    exit_code = main(["validate-spec", "--profile", "h100-pcie-80gb"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Omnismi Validate Spec v1.0.0" in captured.out
+    assert "[Profile: h100-pcie-80gb] [Status: PASS]" in captured.out
+    assert "NVIDIA H100 PCIe" in captured.out
+    assert "80.0GB / 80.0GB" in captured.out
+
+
+def test_validate_spec_fails_for_mismatched_profile(
+    backend_factories, monkeypatch, capsys
+) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(monkeypatch)
+
+    exit_code = main(["validate-spec", "--profile", "mi300x-192gb", "--verbose"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "[Profile: mi300x-192gb] [Status: FAIL]" in captured.out
+    assert "vendor: FAIL - Observed vendor `nvidia` does not match expected `amd`." in captured.out
+
+
+def test_validate_spec_json_output_uses_validate_report_schema(
+    backend_factories, monkeypatch, capsys
+) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(monkeypatch)
+
+    exit_code = main(["validate-spec", "--profile", "h100-pcie-80gb", "-o", "json"])
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert exit_code == 0
+    assert payload["kind"] == "ValidateSpecReport"
+    assert payload["profile"]["name"] == "h100-pcie-80gb"
+    assert payload["summary"]["status"] == "PASS"
+    assert payload["results"][0]["checks"][0]["name"] == "vendor"
+
+
+def test_validate_spec_is_inconclusive_without_visible_devices(
+    backend_factories, monkeypatch, capsys
+) -> None:
+    backend_factories([])
+    _set_fixed_environment(monkeypatch, torch_count=None)
+
+    exit_code = main(["validate-spec", "--profile", "h100-pcie-80gb"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "[Profile: h100-pcie-80gb] [Status: INCONCLUSIVE]" in captured.out
+    assert "No visible devices" in captured.out
+    assert "- inconclusive_count=1" in captured.out
+    assert "No visible devices matched the current validation scope." in captured.out
+
+
+def test_validate_spec_reports_unknown_profiles(backend_factories, monkeypatch, capsys) -> None:
+    backend_factories([_DummyBackend])
+    _set_fixed_environment(monkeypatch)
+
+    exit_code = main(["validate-spec", "--profile", "unknown-sku"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "Unknown profile `unknown-sku`." in captured.err
+    assert "h100-pcie-80gb" in captured.err

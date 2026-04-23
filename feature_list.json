@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-04-22",
+  "updated_at": "2026-04-23",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -1108,28 +1108,39 @@
     {
       "id": "machine-profile-report",
       "area": "roadmap",
-      "status": "planned",
+      "status": "implemented",
       "title": "Add a normalized machine profile and spec report surface",
       "description": "Expose a CLI-first report that combines detected accelerator inventory with curated architecture-profile metadata such as capacity, bandwidth class, and peak throughput hints.",
       "verification": [
-        "Add CLI/docs/tests for the report surface and architecture-profile registry."
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi validate-spec --profile h100-pcie-80gb -o json"
       ],
       "source_of_truth": [
-        "docs/roadmap.md",
+        "src/omnismi/profiles.py",
+        "src/omnismi/cli.py",
+        "tests/test_cli_overview.py",
+        "docs/cli.md",
+        "docs/validation.md",
         "app_spec.txt"
       ]
     },
     {
       "id": "hardware-spec-validation-cli",
       "area": "roadmap",
-      "status": "planned",
+      "status": "implemented",
       "title": "Validate expected hardware specs against detected and measured signals",
       "description": "Add a vendor-agnostic CLI workflow that compares expected SKU or profile assumptions against detected memory, runtime state, and benchmark evidence, then emits PASS/WARN/FAIL style outcomes.",
       "verification": [
-        "Add CLI/docs/tests for spec validation reports and failure classification."
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi validate-spec --profile h100-pcie-80gb --no-color",
+        "PYTHONPATH=src python -m omnismi validate-spec --profile unknown-sku --no-color"
       ],
       "source_of_truth": [
-        "docs/roadmap.md",
+        "src/omnismi/cli.py",
+        "src/omnismi/profiles.py",
+        "tests/test_cli_overview.py",
+        "docs/cli.md",
+        "docs/validation.md",
         "app_spec.txt"
       ]
     },

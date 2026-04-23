@@ -18,6 +18,7 @@ from typing import Any
 import omnismi as omi
 from omnismi import __version__
 from omnismi.backends import registered_backends
+from omnismi.profiles import get_profile, list_profiles, profile_matches_device_name, profile_to_dict
 
 _SUBCOMMANDS = {"doctor", "bench", "validate-spec"}
 _BACKEND_NAMES = {
@@ -28,6 +29,7 @@ _BACKEND_NAMES = {
 _VISIBLE_STATUS_MATCHED = "MATCHED"
 _VISIBLE_STATUS_MISMATCHED = "MISMATCHED"
 _VISIBLE_STATUS_UNKNOWN = "UNKNOWN"
+_PROFILE_MEMORY_TOLERANCE_BYTES = 1024**3
 _VISIBILITY_CONTROL_ENV_VARS = (
     "CUDA_VISIBLE_DEVICES",
     "NVIDIA_VISIBLE_DEVICES",
@@ -157,10 +159,25 @@ def build_root_parser() -> argparse.ArgumentParser:
         "validate-spec",
         help="Compare the current machine against an expected profile.",
     )
+    _build_common_scope_group(validate_parser)
     validate_parser.add_argument(
         "--profile",
-        help="Planned hardware profile name.",
+        required=True,
+        help="Curated hardware profile name such as h100-pcie-80gb.",
     )
+    validate_parser.add_argument(
+        "-o",
+        "--output",
+        choices=["table", "json", "yaml"],
+        default="table",
+        help="Choose a human-readable table or structured output format.",
+    )
+    validate_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed per-device check results.",
+    )
+    _add_color_arguments(validate_parser)
 
     return parser
 
@@ -617,6 +634,162 @@ def build_doctor_report(args: argparse.Namespace, argv: list[str]) -> dict[str, 
     return report
 
 
+def build_validate_spec_report(args: argparse.Namespace, argv: list[str]) -> dict[str, Any]:
+    overview_report = build_overview_report(args=args, argv=argv)
+    profile = get_profile(args.profile)
+    if profile is None:
+        raise ValueError(f"Unknown profile: {args.profile}")
+
+    results: list[dict[str, Any]] = []
+    summary_warnings = list(overview_report["summary"]["warnings"])
+
+    for device in overview_report["inventory"]["devices"]:
+        checks: list[dict[str, Any]] = []
+        vendor_matches = device["vendor"] == profile.vendor
+        checks.append(
+            {
+                "name": "vendor",
+                "expected": profile.vendor,
+                "observed": device["vendor"],
+                "status": "PASS" if vendor_matches else "FAIL",
+                "message": (
+                    f"Vendor matches expected `{profile.vendor}`."
+                    if vendor_matches
+                    else f"Observed vendor `{device['vendor']}` does not match expected `{profile.vendor}`."
+                ),
+            }
+        )
+
+        alias_matches = profile_matches_device_name(profile, device.get("name"))
+        if not vendor_matches:
+            alias_status = "SKIP"
+            alias_message = "Model alias check skipped because the vendor does not match."
+        elif alias_matches:
+            alias_status = "PASS"
+            alias_message = f"Device name matches a curated alias for `{profile.name}`."
+        else:
+            alias_status = "WARN"
+            alias_message = f"Device name did not match the curated aliases for `{profile.name}`."
+        checks.append(
+            {
+                "name": "model_alias",
+                "expected": profile.name,
+                "observed": device.get("name"),
+                "status": alias_status,
+                "message": alias_message,
+            }
+        )
+
+        observed_memory = device.get("memory_total_bytes") or device["metrics"].get("memory_total_bytes")
+        if profile.memory_total_bytes is None:
+            memory_status = "SKIP"
+            memory_message = "The selected profile does not define an expected total-memory capacity."
+        elif observed_memory is None:
+            memory_status = "INCONCLUSIVE"
+            memory_message = "The device did not report total-memory capacity."
+        else:
+            difference = abs(int(observed_memory) - int(profile.memory_total_bytes))
+            if difference <= _PROFILE_MEMORY_TOLERANCE_BYTES:
+                memory_status = "PASS"
+                memory_message = (
+                    f"Observed total memory is within {_format_bytes_compact(_PROFILE_MEMORY_TOLERANCE_BYTES)} of the expected capacity."
+                )
+            else:
+                memory_status = "FAIL"
+                memory_message = (
+                    f"Observed total memory differs from the expected capacity by {_format_bytes_compact(difference)}."
+                )
+        checks.append(
+            {
+                "name": "memory_total_bytes",
+                "expected": profile.memory_total_bytes,
+                "observed": observed_memory,
+                "status": memory_status,
+                "message": memory_message,
+            }
+        )
+
+        check_statuses = {check["status"] for check in checks}
+        if "FAIL" in check_statuses:
+            verdict_status = "FAIL"
+        elif "WARN" in check_statuses:
+            verdict_status = "WARN"
+        elif "INCONCLUSIVE" in check_statuses:
+            verdict_status = "INCONCLUSIVE"
+        else:
+            verdict_status = "PASS"
+
+        results.append(
+            {
+                "device_index": device["index"],
+                "device_name": device["name"],
+                "device_vendor": device["vendor"],
+                "device_state": device["state"],
+                "observed_memory_total_bytes": observed_memory,
+                "expected_memory_total_bytes": profile.memory_total_bytes,
+                "verdict_status": verdict_status,
+                "checks": checks,
+            }
+        )
+
+        if device["state"] != "OK":
+            summary_warnings.append(
+                f"Device {device['index']} has `{device['state']}` telemetry; spec validation used limited evidence."
+            )
+
+    pass_count = sum(result["verdict_status"] == "PASS" for result in results)
+    warn_count = sum(result["verdict_status"] == "WARN" for result in results)
+    fail_count = sum(result["verdict_status"] == "FAIL" for result in results)
+    inconclusive_count = sum(result["verdict_status"] == "INCONCLUSIVE" for result in results)
+
+    overall_status = "INCONCLUSIVE"
+    if results:
+        if fail_count > 0:
+            overall_status = "FAIL"
+        elif warn_count > 0:
+            overall_status = "WARN"
+        elif inconclusive_count > 0:
+            overall_status = "INCONCLUSIVE"
+        else:
+            overall_status = "PASS"
+    if overall_status == "PASS" and summary_warnings:
+        overall_status = "WARN"
+
+    if not results:
+        inconclusive_count = 1
+        summary_warnings.append("No visible devices matched the current validation scope.")
+
+    return {
+        "apiVersion": "omnismi/v1alpha1",
+        "kind": "ValidateSpecReport",
+        "metadata": dict(overview_report["metadata"]),
+        "command": {
+            "argv": ["omnismi", *argv],
+            "output": args.output,
+        },
+        "spec": {
+            "profile": profile.name,
+            "devices": sorted(_selected_device_indexes(args) or []),
+            "all_devices": bool(args.all_devices),
+            "vendor": args.vendor,
+        },
+        "environment": overview_report["environment"],
+        "backends": overview_report["backends"],
+        "inventory": overview_report["inventory"],
+        "profile": profile_to_dict(profile),
+        "results": results,
+        "summary": {
+            "status": overall_status,
+            "device_count": len(results),
+            "pass_count": pass_count,
+            "warn_count": warn_count,
+            "fail_count": fail_count,
+            "inconclusive_count": inconclusive_count,
+            "warnings": _unique_preserving_order(summary_warnings),
+        },
+    }
+
+
 def _unique_preserving_order(values: list[str]) -> list[str]:
     seen: set[str] = set()
     output: list[str] = []
@@ -681,7 +854,7 @@ def _style(
 def _status_color(status: str) -> str | None:
     if status in {"OK", "PASS", _VISIBLE_STATUS_MATCHED}:
         return "green"
-    if status in {"WARN", "PARTIAL", _VISIBLE_STATUS_UNKNOWN, "EMPTY"}:
+    if status in {"WARN", "PARTIAL", _VISIBLE_STATUS_UNKNOWN, "EMPTY", "INCONCLUSIVE", "SKIP"}:
         return "yellow"
     if status in {"FAIL", "ERROR", _VISIBLE_STATUS_MISMATCHED}:
         return "red"
@@ -1117,6 +1290,102 @@ def _render_doctor_table(report: dict[str, Any], verbose: bool, *, color_mode: s
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _render_validate_spec_table(
+    report: dict[str, Any],
+    *,
+    verbose: bool,
+    color_mode: str,
+) -> str:
+    environment = report["environment"]
+    profile = report["profile"]
+    summary = report["summary"]
+    color_enabled = _supports_color(color_mode=color_mode)
+    separator = " " + _style("─" * 79, color="blue", dim=True, enabled=color_enabled)
+
+    lines = [
+        (
+            f"{_style('Omnismi Validate Spec', color='cyan', bold=True, enabled=color_enabled)} "
+            f"v{report['metadata']['omnismi_version']} "
+            f"[Host: {environment['hostname']}] "
+            f"[Profile: {profile['name']}] "
+            f"[Status: {_style(summary['status'], color=_status_color(summary['status']), bold=True, enabled=color_enabled)}]"
+        ),
+        "",
+        separator,
+        _render_heading("[PROFILE]", color_enabled=color_enabled),
+        f"- vendor={profile['vendor']}",
+        f"- description={profile['description']}",
+        f"- expected_memory_total_bytes={_format_bytes(profile['memory_total_bytes'])}",
+        f"- memory_class={profile['memory_class'] or '--'}",
+        f"- bandwidth_class={profile['bandwidth_class'] or '--'}",
+        f"- visibility_scope={environment['visibility_scope']}",
+    ]
+
+    rows: list[list[str]] = []
+    for result in report["results"]:
+        rows.append(
+            [
+                str(result["device_index"]),
+                _truncate_text(result["device_name"], 24),
+                result["device_vendor"],
+                _format_memory_pair(
+                    result["observed_memory_total_bytes"],
+                    result["expected_memory_total_bytes"],
+                ),
+                _style(
+                    result["verdict_status"],
+                    color=_status_color(result["verdict_status"]),
+                    bold=result["verdict_status"] != "PASS",
+                    enabled=color_enabled,
+                ),
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            _render_heading("[RESULTS]", color_enabled=color_enabled),
+            _render_boxed_table(
+                headers=[
+                    _style("ID", color="blue", bold=True, enabled=color_enabled),
+                    _style("NAME", color="blue", bold=True, enabled=color_enabled),
+                    _style("VENDOR", color="blue", bold=True, enabled=color_enabled),
+                    _style("MEMORY", color="blue", bold=True, enabled=color_enabled),
+                    _style("VERDICT", color="blue", bold=True, enabled=color_enabled),
+                ],
+                rows=rows,
+                alignments=["right", "left", "left", "right", "left"],
+            ),
+        ]
+    )
+
+    if verbose and report["results"]:
+        lines.extend(["", _render_heading("[CHECKS]", color_enabled=color_enabled)])
+        for result in report["results"]:
+            lines.append(
+                f"- device {result['device_index']} `{result['device_name']}` => {result['verdict_status']}"
+            )
+            for check in result["checks"]:
+                lines.append(f"  {check['name']}: {check['status']} - {check['message']}")
+
+    if report["summary"]["warnings"]:
+        lines.extend(["", _render_heading("[WARNINGS]", color_enabled=color_enabled)])
+        lines.extend(f"- {warning}" for warning in report["summary"]["warnings"])
+
+    lines.extend(
+        [
+            "",
+            _render_heading("[SUMMARY]", color_enabled=color_enabled),
+            f"- pass_count={summary['pass_count']}",
+            f"- warn_count={summary['warn_count']}",
+            f"- fail_count={summary['fail_count']}",
+            f"- inconclusive_count={summary['inconclusive_count']}",
+        ]
+    )
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _render_structured_output(report: dict[str, Any], output_format: str) -> str:
     if output_format == "json":
         return json.dumps(report, indent=2, sort_keys=False) + "\n"
@@ -1256,6 +1525,30 @@ def _run_doctor(args: argparse.Namespace, argv: list[str]) -> int:
     return 0
 
 
+def _run_validate_spec(args: argparse.Namespace, argv: list[str]) -> int:
+    profile = get_profile(args.profile)
+    if profile is None:
+        available = ", ".join(item.name for item in list_profiles())
+        print(
+            f"Unknown profile `{args.profile}`. Available profiles: {available}",
+            file=sys.stderr,
+        )
+        return 2
+
+    report = build_validate_spec_report(args=args, argv=argv)
+    if args.output == "table":
+        sys.stdout.write(
+            _render_validate_spec_table(
+                report=report,
+                verbose=bool(args.verbose),
+                color_mode=str(args.color),
+            )
+        )
+    else:
+        sys.stdout.write(_render_structured_output(report=report, output_format=args.output))
+    return 0
+
+
 def _run_placeholder(command_name: str) -> int:
     print(
         f"`omnismi {command_name}` is planned but not implemented yet.",
@@ -1275,7 +1568,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "bench":
             return _run_placeholder("bench")
         if args.command == "validate-spec":
-            return _run_placeholder("validate-spec")
+            return _run_validate_spec(args=args, argv=raw_args)
         parser.error(f"Unsupported command: {args.command}")
 
     parser = build_overview_parser()

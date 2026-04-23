@@ -50,6 +50,12 @@ Explain visibility mismatches or partial metrics:
 omnismi doctor
 ```
 
+Compare visible devices against a curated hardware profile:
+
+```bash
+omnismi validate-spec --profile h100-pcie-80gb
+```
+
 Emit machine-readable output for agents or automation:
 
 ```bash
