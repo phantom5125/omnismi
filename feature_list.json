@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-04-23",
+  "updated_at": "2026-04-24",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -1147,14 +1147,20 @@
     {
       "id": "benchmark-cli",
       "area": "roadmap",
-      "status": "planned",
+      "status": "implemented",
       "title": "Add portable CLI benchmarks for bandwidth and compute sanity checks",
       "description": "Provide compact, reproducible benchmark probes that can measure sustained memory bandwidth, allocation pressure, and basic compute throughput without depending on vendor sample suites, with `table`, `json`, and `yaml` outputs sharing one report schema.",
       "verification": [
-        "Add CLI/docs/tests for portable benchmark commands and result export."
+        "PYTHONPATH=src pytest -q tests/test_cli_bench.py",
+        "PYTHONPATH=src python -m omnismi bench bandwidth --no-color",
+        "PYTHONPATH=src python -m omnismi bench bandwidth -o json"
       ],
       "source_of_truth": [
+        "src/omnismi/bench.py",
+        "src/omnismi/cli.py",
+        "tests/test_cli_bench.py",
         "docs/bench.md",
+        "docs/cli.md",
         "docs/roadmap.md",
         "app_spec.txt"
       ]

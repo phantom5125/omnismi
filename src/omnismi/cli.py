@@ -11,6 +11,7 @@ import shutil
 import socket
 import sys
 import time
+import uuid
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,7 @@ from typing import Any
 import omnismi as omi
 from omnismi import __version__
 from omnismi.backends import registered_backends
+from omnismi.bench import execute_bandwidth_probe
 from omnismi.profiles import get_profile, list_profiles, profile_matches_device_name, profile_to_dict
 
 _SUBCOMMANDS = {"doctor", "bench", "validate-spec"}
@@ -149,10 +151,86 @@ def build_root_parser() -> argparse.ArgumentParser:
         "bench",
         help="Portable accelerator benchmark probes.",
     )
-    bench_parser.add_argument(
-        "bench_command",
-        nargs="?",
-        help="Planned subcommand such as bandwidth, matmul, or suite.",
+    bench_subparsers = bench_parser.add_subparsers(dest="bench_command", required=True)
+
+    bench_bandwidth_parser = bench_subparsers.add_parser(
+        "bandwidth",
+        help="Run a portable memory-bandwidth probe.",
+    )
+    _build_common_scope_group(bench_bandwidth_parser)
+    bench_bandwidth_parser.add_argument(
+        "--pattern",
+        choices=["copy", "triad"],
+        default="copy",
+        help="Bandwidth access pattern to exercise.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--dtype",
+        choices=["fp32", "fp16", "bf16"],
+        default="fp32",
+        help="Element dtype for the bandwidth probe.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--buffer-bytes",
+        type=int,
+        default=256 * 1024**2,
+        help="Target buffer size per input tensor in bytes.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--iterations",
+        type=int,
+        default=20,
+        help="Minimum loop count per sample before auto-scaling by duration.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--runtime",
+        choices=["auto", "torch"],
+        default="auto",
+        help="Execution runtime for the portable benchmark.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--warmup-seconds",
+        type=float,
+        default=0.2,
+        help="Warmup time before recording samples.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--duration-seconds",
+        type=float,
+        default=1.0,
+        help="Target minimum sample duration after auto-scaling iterations.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--repeats",
+        type=int,
+        default=3,
+        help="Number of recorded samples per device.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--profile",
+        help="Optional profile label to attach to the benchmark report.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "--include-samples",
+        action="store_true",
+        help="Include per-sample bandwidth values in structured output.",
+    )
+    bench_bandwidth_parser.add_argument(
+        "-o",
+        "--output",
+        choices=["table", "json", "yaml"],
+        default="table",
+        help="Choose a human-readable table or structured output format.",
+    )
+    _add_color_arguments(bench_bandwidth_parser)
+
+    bench_subparsers.add_parser(
+        "matmul",
+        help="Planned portable GEMM throughput probe.",
+    )
+    bench_subparsers.add_parser(
+        "suite",
+        help="Planned curated benchmark suite.",
     )
 
     validate_parser = subparsers.add_parser(
@@ -790,6 +868,186 @@ def build_validate_spec_report(args: argparse.Namespace, argv: list[str]) -> dic
     }
 
 
+def build_bench_report(args: argparse.Namespace, argv: list[str]) -> dict[str, Any]:
+    overview_report = build_overview_report(args=args, argv=argv)
+    profile = get_profile(args.profile) if getattr(args, "profile", None) else None
+    result_records: list[dict[str, Any]] = []
+    summary_warnings = list(overview_report["summary"]["warnings"])
+
+    for ordinal, device in enumerate(overview_report["inventory"]["devices"]):
+        probe_result = _execute_bandwidth_probe_for_device(device=device, args=args)
+        verdict = _build_bandwidth_verdict(
+            device=device,
+            execution=probe_result["execution"],
+            profile=profile,
+        )
+        comparison = _build_bandwidth_comparison(device=device, profile=profile)
+        result_records.append(
+            {
+                "result_id": f"bandwidth-{device['index']}-{ordinal}",
+                "probe": "bandwidth",
+                "case_name": _build_bandwidth_case_name(
+                    pattern=args.pattern,
+                    dtype=args.dtype,
+                    buffer_bytes=probe_result["parameters"].get("buffer_bytes", args.buffer_bytes),
+                ),
+                "device_index": device["index"],
+                "execution": probe_result["execution"],
+                "parameters": probe_result["parameters"],
+                "statistics": probe_result["statistics"],
+                "metrics": probe_result["metrics"],
+                "comparison": comparison,
+                "verdict": verdict,
+            }
+        )
+        if probe_result["execution"]["status"] == "skipped":
+            summary_warnings.extend(probe_result["execution"]["errors"])
+        if device["state"] != "OK":
+            summary_warnings.append(
+                f"Device {device['index']} has `{device['state']}` telemetry; bandwidth evidence may be incomplete."
+            )
+
+    result_count = len(result_records)
+    pass_count = sum(result["verdict"]["status"] == "PASS" for result in result_records)
+    warn_count = sum(result["verdict"]["status"] == "WARN" for result in result_records)
+    fail_count = sum(result["verdict"]["status"] == "FAIL" for result in result_records)
+    inconclusive_count = sum(result["verdict"]["status"] == "INCONCLUSIVE" for result in result_records)
+
+    execution_status = "success"
+    execution_states = {result["execution"]["status"] for result in result_records}
+    if "error" in execution_states and execution_states == {"error"}:
+        execution_status = "error"
+    elif "error" in execution_states or "skipped" in execution_states:
+        execution_status = "partial"
+
+    verdict_status = "INCONCLUSIVE"
+    if result_records:
+        if fail_count > 0:
+            verdict_status = "FAIL"
+        elif warn_count > 0:
+            verdict_status = "WARN"
+        elif pass_count == result_count:
+            verdict_status = "PASS"
+        else:
+            verdict_status = "INCONCLUSIVE"
+    else:
+        summary_warnings.append("No visible devices matched the current benchmark scope.")
+
+    return {
+        "apiVersion": "omnismi/v1alpha1",
+        "kind": "BenchReport",
+        "metadata": {
+            "run_id": str(uuid.uuid4()),
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "omnismi_version": __version__,
+        },
+        "command": {
+            "argv": ["omnismi", *argv],
+            "subcommand": args.bench_command,
+            "output": args.output,
+        },
+        "spec": {
+            "devices": sorted(_selected_device_indexes(args) or []),
+            "all_devices": bool(args.all_devices),
+            "vendor": args.vendor,
+            "profile": args.profile,
+            "runtime": args.runtime,
+            "warmup_seconds": args.warmup_seconds,
+            "duration_seconds": args.duration_seconds,
+            "repeats": args.repeats,
+            "pattern": args.pattern,
+            "dtype": args.dtype,
+            "buffer_bytes": args.buffer_bytes,
+            "minimum_iterations": args.iterations,
+            "include_samples": bool(args.include_samples),
+        },
+        "environment": overview_report["environment"],
+        "backends": overview_report["backends"],
+        "inventory": overview_report["inventory"],
+        "profile": profile_to_dict(profile) if profile is not None else None,
+        "results": result_records,
+        "summary": {
+            "execution_status": execution_status,
+            "verdict_status": verdict_status,
+            "result_count": result_count,
+            "pass_count": pass_count,
+            "warn_count": warn_count,
+            "fail_count": fail_count,
+            "inconclusive_count": inconclusive_count if result_records else 1,
+            "warnings": _unique_preserving_order(summary_warnings),
+        },
+    }
+
+
+def _build_bandwidth_case_name(*, pattern: str, dtype: str, buffer_bytes: int) -> str:
+    return f"{pattern}_{dtype}_{_format_bytes_compact(int(buffer_bytes)).lower()}"
+
+
+def _build_bandwidth_comparison(
+    *,
+    device: dict[str, Any],
+    profile: Any | None,
+) -> dict[str, Any] | None:
+    if profile is None:
+        return None
+
+    if device["vendor"] != profile.vendor or not profile_matches_device_name(profile, device.get("name")):
+        return {
+            "status": "INCONCLUSIVE",
+            "profile": profile.name,
+            "reasons": [
+                f"Selected profile `{profile.name}` does not match the observed device inventory exactly."
+            ],
+        }
+
+    return {
+        "status": "INCONCLUSIVE",
+        "profile": profile.name,
+        "reasons": [
+            "The current profile registry does not yet define an expected sustained bandwidth threshold."
+        ],
+    }
+
+
+def _build_bandwidth_verdict(
+    *,
+    device: dict[str, Any],
+    execution: dict[str, Any],
+    profile: Any | None,
+) -> dict[str, Any]:
+    if execution["status"] == "error":
+        return {"status": "FAIL", "reasons": list(execution["errors"])}
+    if execution["status"] == "skipped":
+        return {"status": "INCONCLUSIVE", "reasons": list(execution["errors"])}
+
+    reasons: list[str] = []
+    if device["state"] != "OK":
+        reasons.append(f"Device telemetry state is `{device['state']}`.")
+    if profile is None:
+        reasons.append("No comparison profile was selected for this benchmark run.")
+    else:
+        reasons.append(
+            "A profile was attached, but benchmark verdicts remain inconclusive until bandwidth thresholds are curated."
+        )
+    return {"status": "INCONCLUSIVE", "reasons": reasons}
+
+
+def _execute_bandwidth_probe_for_device(*, device: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    return execute_bandwidth_probe(
+        device_index=device["index"],
+        device_vendor=device["vendor"],
+        pattern=args.pattern,
+        dtype=args.dtype,
+        buffer_bytes=args.buffer_bytes,
+        minimum_iterations=args.iterations,
+        warmup_seconds=args.warmup_seconds,
+        duration_seconds=args.duration_seconds,
+        repeats=args.repeats,
+        runtime=args.runtime,
+        include_samples=bool(args.include_samples),
+    )
+
+
 def _unique_preserving_order(values: list[str]) -> list[str]:
     seen: set[str] = set()
     output: list[str] = []
@@ -1386,6 +1644,91 @@ def _render_validate_spec_table(
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _render_bench_table(report: dict[str, Any], *, color_mode: str) -> str:
+    environment = report["environment"]
+    summary = report["summary"]
+    color_enabled = _supports_color(color_mode=color_mode)
+    separator = " " + _style("─" * 79, color="blue", dim=True, enabled=color_enabled)
+    profile = report.get("profile")
+
+    lines = [
+        (
+            f"{_style('Omnismi Bench', color='cyan', bold=True, enabled=color_enabled)} "
+            f"v{report['metadata']['omnismi_version']} "
+            f"[Host: {environment['hostname']}] "
+            f"[Probe: {report['command']['subcommand']}] "
+            f"[Status: {_style(summary['verdict_status'], color=_status_color(summary['verdict_status']), bold=True, enabled=color_enabled)}]"
+        ),
+        "",
+        separator,
+        _render_heading("[SPEC]", color_enabled=color_enabled),
+        f"- runtime={report['spec']['runtime']}",
+        f"- pattern={report['spec']['pattern']}",
+        f"- dtype={report['spec']['dtype']}",
+        f"- buffer_bytes={_format_bytes_compact(report['spec']['buffer_bytes'])}",
+        f"- repeats={report['spec']['repeats']}",
+    ]
+
+    if profile is not None:
+        lines.append(f"- profile={profile['name']}")
+
+    rows: list[list[str]] = []
+    for result in report["results"]:
+        rows.append(
+            [
+                str(result["device_index"]),
+                result["case_name"],
+                result["execution"]["status"],
+                _format_rate(result["metrics"].get("bandwidth_bytes_per_second")),
+                str(result["statistics"].get("sample_count") or 0),
+                _style(
+                    result["verdict"]["status"],
+                    color=_status_color(result["verdict"]["status"]),
+                    bold=result["verdict"]["status"] != "PASS",
+                    enabled=color_enabled,
+                ),
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            _render_heading("[RESULTS]", color_enabled=color_enabled),
+            _render_boxed_table(
+                headers=[
+                    _style("ID", color="blue", bold=True, enabled=color_enabled),
+                    _style("CASE", color="blue", bold=True, enabled=color_enabled),
+                    _style("EXEC", color="blue", bold=True, enabled=color_enabled),
+                    _style("BANDWIDTH", color="blue", bold=True, enabled=color_enabled),
+                    _style("SAMPLES", color="blue", bold=True, enabled=color_enabled),
+                    _style("VERDICT", color="blue", bold=True, enabled=color_enabled),
+                ],
+                rows=rows,
+                alignments=["right", "left", "left", "right", "right", "left"],
+            ),
+        ]
+    )
+
+    if summary["warnings"]:
+        lines.extend(["", _render_heading("[WARNINGS]", color_enabled=color_enabled)])
+        lines.extend(f"- {warning}" for warning in summary["warnings"])
+
+    lines.extend(
+        [
+            "",
+            _render_heading("[SUMMARY]", color_enabled=color_enabled),
+            f"- execution_status={summary['execution_status']}",
+            f"- result_count={summary['result_count']}",
+            f"- pass_count={summary['pass_count']}",
+            f"- warn_count={summary['warn_count']}",
+            f"- fail_count={summary['fail_count']}",
+            f"- inconclusive_count={summary['inconclusive_count']}",
+        ]
+    )
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _render_structured_output(report: dict[str, Any], output_format: str) -> str:
     if output_format == "json":
         return json.dumps(report, indent=2, sort_keys=False) + "\n"
@@ -1549,6 +1892,17 @@ def _run_validate_spec(args: argparse.Namespace, argv: list[str]) -> int:
     return 0
 
 
+def _run_bench(args: argparse.Namespace, argv: list[str]) -> int:
+    if args.bench_command == "bandwidth":
+        report = build_bench_report(args=args, argv=argv)
+        if args.output == "table":
+            sys.stdout.write(_render_bench_table(report=report, color_mode=str(args.color)))
+        else:
+            sys.stdout.write(_render_structured_output(report=report, output_format=args.output))
+        return 0
+    return _run_placeholder(f"bench {args.bench_command}")
+
+
 def _run_placeholder(command_name: str) -> int:
     print(
         f"`omnismi {command_name}` is planned but not implemented yet.",
@@ -1566,7 +1920,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "doctor":
             return _run_doctor(args=args, argv=raw_args)
         if args.command == "bench":
-            return _run_placeholder("bench")
+            return _run_bench(args=args, argv=raw_args)
         if args.command == "validate-spec":
             return _run_validate_spec(args=args, argv=raw_args)
         parser.error(f"Unsupported command: {args.command}")

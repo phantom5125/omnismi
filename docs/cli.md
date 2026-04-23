@@ -83,6 +83,12 @@ Recommended common flags:
 
 Run portable accelerator probes. See [Bench](bench.md).
 
+Current implementation status:
+
+- `omnismi bench bandwidth`: implemented
+- `omnismi bench matmul`: planned
+- `omnismi bench suite`: planned
+
 ### `omnismi validate-spec`
 
 Compare current discovery output against a curated machine profile and emit a
@@ -324,6 +330,11 @@ Summary:
 - 2 / 2 results passed profile thresholds.
 - Run `omnismi bench bandwidth -o yaml` to save the full report.
 ```
+
+The first shipped slice is intentionally narrower than that aspirational output.
+Today `omnismi bench bandwidth` already emits a stable `BenchReport`, but raw
+measurements remain the primary value and verdicts stay `INCONCLUSIVE` until the
+profile registry grows real sustained-bandwidth thresholds.
 
 ### `omnismi validate-spec`
 

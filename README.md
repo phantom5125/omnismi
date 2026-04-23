@@ -56,6 +56,12 @@ Compare visible devices against a curated hardware profile:
 omnismi validate-spec --profile h100-pcie-80gb
 ```
 
+Run the first portable bandwidth sanity probe:
+
+```bash
+omnismi bench bandwidth
+```
+
 Emit machine-readable output for agents or automation:
 
 ```bash

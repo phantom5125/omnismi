@@ -1,8 +1,9 @@
 # Bench
 
-`omnismi bench` is a planned CLI surface for portable accelerator sanity checks.
-This page defines the intended command layout and output contract before the
-runtime implementation lands.
+`omnismi bench` is the CLI surface for portable accelerator sanity checks.
+Today the first `bandwidth` probe is implemented; `matmul` and `suite` remain
+planned. This page describes both the current behavior and the intended longer-
+term command layout.
 
 ## Goals
 
@@ -33,6 +34,17 @@ omnismi bench suite [flags]
 
 Run a portable memory-bandwidth probe on one or more visible devices.
 
+Current implementation notes:
+
+- implemented with a portable `torch` runtime for NVIDIA and AMD devices when
+  PyTorch can see the selected device
+- uses Omnismi discovery scope first, so host/container/runtime-visible device
+  filtering is preserved automatically
+- emits a stable `BenchReport` in `table`, `json`, and `yaml`
+- currently reports raw bandwidth evidence first and leaves verdicts
+  `INCONCLUSIVE` until curated sustained-bandwidth thresholds are added to the
+  profile registry
+
 Expected use cases:
 
 - verify that a rented machine is in the right bandwidth class
@@ -55,6 +67,8 @@ Notes:
 ### `omnismi bench matmul`
 
 Run a portable GEMM or batched-GEMM throughput probe.
+
+Current status: planned.
 
 Expected use cases:
 
@@ -81,6 +95,8 @@ Notes:
 ### `omnismi bench suite`
 
 Run a curated set of benchmark cases and emit one consolidated report.
+
+Current status: planned.
 
 Expected use cases:
 
@@ -129,6 +145,12 @@ Command rules:
 - `--profile` is optional; without it, benchmark results may still be valid but verdicts may become `INCONCLUSIVE`.
 - Device scoping should follow the same host/container/runtime visibility rules as [`omnismi`](cli.md).
 
+For the current `bandwidth` implementation:
+
+- `--runtime auto|torch`, `--warmup-seconds`, `--duration-seconds`, `--repeats`,
+  `--include-samples`, and the bandwidth-specific probe flags are implemented
+- `--quiet`, `--warn-below-ratio`, and `--fail-below-ratio` remain planned
+
 ## Output formats
 
 Omnismi should treat structured output as a first-class feature.
@@ -154,6 +176,14 @@ Design notes:
 ```bash
 omnismi bench suite --profile h100-pcie-80gb -o yaml > bench.yaml
 omnismi bench matmul --preset standard -o json > matmul.json
+```
+
+Current implemented examples:
+
+```bash
+omnismi bench bandwidth
+omnismi bench bandwidth --dtype bf16 --pattern triad
+omnismi bench bandwidth --profile h100-pcie-80gb -o json
 ```
 
 ## Common report envelope
@@ -201,7 +231,7 @@ inventory:
 results: []
 summary:
   execution_status: "success"
-  verdict_status: "PASS"
+  verdict_status: "INCONCLUSIVE"
   result_count: 0
   pass_count: 0
   warn_count: 0
@@ -253,6 +283,11 @@ Each item in `results` should contain:
 - `verdict`:
   - `status`: `PASS|WARN|FAIL|INCONCLUSIVE`
   - `reasons`
+
+The current `bandwidth` implementation fills this schema with stable execution
+and measurement data today, while leaving `comparison` and profile-aware
+`verdict` thresholds intentionally conservative until more curated benchmark
+baselines are added.
 
 ## Bandwidth result schema
 

@@ -81,6 +81,9 @@ Planned frontier
   benchmark evidence later without breaking the report shape.
 - Vendor-agnostic benchmark probes for trustable memory-bandwidth and compute
   sanity checks, kept separate from vendor sample applications.
+- The first benchmark slice should prioritize a portable `bandwidth` probe with
+  stable `table/json/yaml` output and honest `INCONCLUSIVE` verdicts before the
+  profile registry grows sustained-bandwidth thresholds.
 - Future CLI/report surfaces should keep one stable machine-readable object model
   across `json` and `yaml`, with human table output as a projection layer.
 - Future Intel/Apple adapter work.
