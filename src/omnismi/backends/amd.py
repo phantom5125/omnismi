@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from typing import Any
 
@@ -71,6 +73,11 @@ class AmdBackend(BaseBackend):
         return []
 
     def available(self) -> bool:
+        # Avoid noisy imports if no AMD hardware is present
+        if sys.platform == "linux":
+            if not os.path.exists("/sys/class/kfd") and not os.path.exists("/dev/kfd"):
+                return False
+
         return len(self._handles()) > 0
 
     def devices(self) -> list[Any]:
@@ -157,21 +164,47 @@ class AmdBackend(BaseBackend):
     def _read_temperature(self, handle: Any) -> float | None:
         assert self._amdsmi is not None
 
+        # Try EDGE temperature first (preferred)
         if (
             hasattr(self._amdsmi, "amdsmi_get_temp_metric")
             and hasattr(self._amdsmi, "AmdSmiTemperatureType")
             and hasattr(self._amdsmi, "AmdSmiTemperatureMetric")
         ):
-            sensor = getattr(self._amdsmi.AmdSmiTemperatureType, "EDGE", None)
+            temp_type = getattr(self._amdsmi.AmdSmiTemperatureType, "EDGE", None)
+            hotspot_type = getattr(self._amdsmi.AmdSmiTemperatureType, "HOTSPOT", None)
+            mem_type = getattr(self._amdsmi.AmdSmiTemperatureType, "MEM", None)
             metric = getattr(self._amdsmi.AmdSmiTemperatureMetric, "CURRENT", None)
-            if sensor is not None and metric is not None:
-                try:
-                    return normalize_temperature_c(
-                        self._amdsmi.amdsmi_get_temp_metric(handle, sensor, metric),
-                        unit="millicelsius",
-                    )
-                except Exception:
-                    pass
+            
+            if metric is not None:
+                # Try EDGE first
+                if temp_type is not None:
+                    try:
+                        result = self._amdsmi.amdsmi_get_temp_metric(handle, temp_type, metric)
+                        temp = normalize_temperature_c(result, unit="millicelsius")
+                        if temp is not None:
+                            return temp
+                    except Exception:
+                        pass
+                
+                # Fallback to HOTSPOT if EDGE unavailable
+                if hotspot_type is not None:
+                    try:
+                        result = self._amdsmi.amdsmi_get_temp_metric(handle, hotspot_type, metric)
+                        temp = normalize_temperature_c(result, unit="millicelsius")
+                        if temp is not None:
+                            return temp
+                    except Exception:
+                        pass
+                
+                # Fallback to MEM temperature
+                if mem_type is not None:
+                    try:
+                        result = self._amdsmi.amdsmi_get_temp_metric(handle, mem_type, metric)
+                        temp = normalize_temperature_c(result, unit="millicelsius")
+                        if temp is not None:
+                            return temp
+                    except Exception:
+                        pass
 
         if hasattr(self._amdsmi, "amdsmi_get_gpu_temperature"):
             try:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from typing import Any
 
@@ -66,6 +68,11 @@ class NvidiaBackend(BaseBackend):
         return normalize_text(value)
 
     def available(self) -> bool:
+        # Avoid unnecessary initialization if no NVIDIA hardware is present
+        if sys.platform == "linux":
+            if not os.path.exists("/proc/driver/nvidia/version") and not os.path.exists("/dev/nvidiactl"):
+                return False
+
         if not self._ensure_initialized():
             return False
 
