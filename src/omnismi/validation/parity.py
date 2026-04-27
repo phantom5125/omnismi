@@ -167,12 +167,23 @@ def _collect_amd_direct_samples(samples: int, interval_s: float) -> list[list[di
                     pass
 
                 try:
-                    sensor = amdsmi.AmdSmiTemperatureType.EDGE
+                    temp_type = getattr(amdsmi.AmdSmiTemperatureType, "EDGE", None)
+                    hotspot_type = getattr(amdsmi.AmdSmiTemperatureType, "HOTSPOT", None)
+                    mem_type = getattr(amdsmi.AmdSmiTemperatureType, "MEM", None)
                     metric = amdsmi.AmdSmiTemperatureMetric.CURRENT
-                    temperature = normalize_temperature_c(
-                        amdsmi.amdsmi_get_temp_metric(handle, sensor, metric),
-                        unit="millicelsius",
-                    )
+                    
+                    # Try EDGE first, then HOTSPOT, then MEM
+                    for sensor in [temp_type, hotspot_type, mem_type]:
+                        if sensor is not None:
+                            try:
+                                temperature = normalize_temperature_c(
+                                    amdsmi.amdsmi_get_temp_metric(handle, sensor, metric),
+                                    unit="millicelsius",
+                                )
+                                if temperature is not None:
+                                    break
+                            except Exception:
+                                pass
                 except Exception:
                     pass
 
