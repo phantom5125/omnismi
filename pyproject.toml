@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omnismi"
-version = "1.0.0"
-description = "Cross-vendor accelerator observability for AI agents and Python apps (NVIDIA, AMD, and Google TPU today)"
+version = "1.1.0"
+description = "Cross-vendor accelerator observability for AI agents and Python apps, with an agent-friendly preflight CLI (NVIDIA, AMD, and Google TPU today)"
 keywords = ["gpu", "tpu", "accelerator", "cross-vendor", "nvidia", "amd", "google", "observability", "ai-agent"]
 readme = "README.md"
 license = {text = "MIT"}
@@ -54,10 +54,13 @@ docs = [
     "mkdocstrings[python]>=0.24",
 ]
 
+[project.scripts]
+omnismi = "omnismi.cli:main"
+
 [project.urls]
-Homepage = "https://github.com/omnismi/omnismi"
-Repository = "https://github.com/omnismi/omnismi"
-Documentation = "https://github.com/omnismi/omnismi/tree/main/docs"
+Homepage = "https://github.com/phantom5125/omnismi"
+Repository = "https://github.com/phantom5125/omnismi"
+Documentation = "https://github.com/phantom5125/omnismi/tree/main/docs"
 
 [tool.setuptools.packages.find]
 where = ["src"]
