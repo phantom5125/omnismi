@@ -30,6 +30,23 @@ print(f"has_gpu={has_gpu}")
 print(f"max_memory_bytes={max_memory_bytes}")
 ```
 
+
+## Agent CLI (preflight)
+
+Stable JSON on stdout for agents and scripts. Exit codes are part of the contract.
+
+```bash
+pip install omnismi
+# optional vendor extras as needed, e.g. pip install "omnismi[nvidia]"
+
+omnismi preflight --json   # JSON is always on stdout; --json is accepted as a no-op alias in docs
+omnismi preflight --min-gpus 1 --min-free-gib 8
+omnismi inventory
+omnismi metrics
+```
+
+Exit codes: `0` ok, `2` no visible accelerators, `3` threshold failure (`--min-gpus` / `--min-free-*`), `10` backend error. Honors `CUDA_VISIBLE_DEVICES` by default (`--all-devices` to ignore). Processes and topology are reserved in the JSON schema but not implemented yet.
+
 ## Install
 
 Omnismi core is lightweight and has no mandatory vendor dependency.
@@ -53,11 +70,11 @@ python -m pip install -e ".[all]"
 If you only need one vendor backend during local development:
 
 ```bash
-python -m pip install -e ".[nvidia]"
+python -m pip install -e "[nvidia]"
 # or
-python -m pip install -e ".[amd]"
+python -m pip install -e "[amd]"
 # or
-python -m pip install -e ".[tpu]"
+python -m pip install -e "[tpu]"
 ```
 
 ## Why Omnismi
@@ -165,6 +182,7 @@ if dev is not None:
 ## Documentation
 
 - API and usage docs: `docs/`
+- Agent CLI: [docs/cli.md](docs/cli.md)
 - Build docs locally: `mkdocs serve`
 - GPU parity validation: `python -m omnismi.validation.parity --vendor nvidia --samples 3`
 
