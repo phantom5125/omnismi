@@ -70,11 +70,11 @@ python -m pip install -e ".[all]"
 If you only need one vendor backend during local development:
 
 ```bash
-python -m pip install -e "[nvidia]"
+python -m pip install -e ".[nvidia]"
 # or
-python -m pip install -e "[amd]"
+python -m pip install -e ".[amd]"
 # or
-python -m pip install -e "[tpu]"
+python -m pip install -e ".[tpu]"
 ```
 
 ## Why Omnismi
