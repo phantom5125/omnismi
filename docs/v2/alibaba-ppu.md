@@ -1,6 +1,40 @@
 # Alibaba / T-Head PPU adapter
 
-Status: research and implementation contract; adapter not implemented or registered.
+Status: experimental PPU-SMI adapter implemented and registered; fixture-tested,
+not hardware-validated. Initial metrics coverage is memory only.
+
+## Available now
+
+Install the vendor's SAIL/KMD tooling separately and make `ppu-smi` available on
+PATH. Core Omnismi adds no SDK dependency or installer. Existing Python APIs and
+`omnismi --vendor alibaba` / `omnismi doctor --vendor alibaba` discover physical
+PPUs through an explicit CSV query of index, name, UUID, PCI address, driver,
+total memory and used memory. MiB is converted to bytes. Unknown fields remain
+None; temperature, power, activity and clocks are not yet queried.
+
+The adapter queries at most once per 0.5 seconds on demand, with a 5-second timeout
+and 1-MiB command output budget. It uses no shell, control/reset flags or background
+sampler. UUID/PCI identity prevents reused indexes silently replacing devices.
+Missing tools remain unavailable; malformed output and failed commands remain errors.
+
+Source: [SAIL PPU-SMI manual, SDK v2.1.1](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=221),
+reviewed 2026-09-22, sections 3.2 and 3.2.1. The official manual identifies HGML as
+the underlying management library and documents CSV/nounits and the selected
+fields. This implementation uses that documented CLI boundary, not an invented HGML ABI.
+
+Limitations: physical management visibility, not verified process-runtime visibility;
+MIG children, CUDA-compatible duplicate discovery, other telemetry, native HGML
+bindings and real-device parity remain unvalidated. No card is marked verified.
+
+Official references for the next diagnostic increment:
+- [PPU XID overview](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=181)
+- [PPU001 XID table](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=182)
+- [PPU0015 XID table](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=183)
+- [ECC handling](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=184)
+
+These tables are generation-specific and are not yet included in the decoder.
+The source index was retrieved from the site's public document API after the
+initial HTML-only fetch could not render the dynamic site.
 Target SKU and SDK version await confirmation. Use the Alibaba PPU family as the
 provisional scope; the SDK guide's example SKU is not a hardware support promise.
 

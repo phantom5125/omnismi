@@ -7,6 +7,7 @@ import threading
 from typing import Callable
 
 from omnismi.backends.base import BaseBackend
+from omnismi.backends.alibaba_ppu import AlibabaPpuBackend
 from omnismi.backends.amd import AmdBackend
 from omnismi.backends.google_tpu import GoogleTpuBackend
 from omnismi.backends.nvidia import NvidiaBackend
@@ -17,6 +18,7 @@ _DEFAULT_FACTORIES: tuple[BackendFactory, ...] = (
     NvidiaBackend,
     AmdBackend,
     GoogleTpuBackend,
+    AlibabaPpuBackend,
 )
 _BACKEND_FACTORIES: tuple[BackendFactory, ...] = _DEFAULT_FACTORIES
 _BACKENDS: list[BaseBackend] | None = None

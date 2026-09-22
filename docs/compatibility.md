@@ -114,3 +114,10 @@ the required evidence template.
 - Metric availability varies by device, firmware, and permission model.
 - Any unavailable metric is returned as `None` instead of raising by default.
 - Unit normalization target is fixed: bytes, percent, Celsius, Watts, MHz.
+
+## 2.0 development: Alibaba PPU
+
+The experimental `alibaba` backend uses the official SAIL PPU-SMI CSV interface.
+It supports physical device inventory and memory snapshots only, with no Python
+vendor dependency. Fixtures pass; no PPU hardware/model is marked verified.
+See [adapter scope](v2/alibaba-ppu.md) for visibility and capability limitations.

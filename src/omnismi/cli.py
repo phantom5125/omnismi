@@ -27,6 +27,7 @@ _BACKEND_NAMES = {
     "NvidiaBackend": "nvml",
     "AmdBackend": "amdsmi",
     "GoogleTpuBackend": "tpumonitoring",
+    "AlibabaPpuBackend": "ppu-smi (HGML)",
 }
 _VISIBLE_STATUS_MATCHED = "MATCHED"
 _VISIBLE_STATUS_MISMATCHED = "MISMATCHED"
@@ -73,7 +74,7 @@ def _build_common_scope_group(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--vendor",
-        choices=["nvidia", "amd", "google"],
+        choices=["nvidia", "amd", "google", "alibaba"],
         help="Restrict output to one vendor.",
     )
 
