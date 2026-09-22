@@ -1914,6 +1914,11 @@ def _run_placeholder(command_name: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
 
+    if raw_args and raw_args[0] == "perf-doctor":
+        from omnismi.perf_cli import run
+
+        return run(raw_args[1:])
+
     if raw_args and raw_args[0] in _SUBCOMMANDS:
         parser = build_root_parser()
         args = parser.parse_args(raw_args)

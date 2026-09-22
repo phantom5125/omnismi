@@ -1,6 +1,55 @@
 # Performance expectations and perf-doctor
 
-Status: planned; no curated sustained baseline or percentage verdict is shipped yet.
+Status: offline evaluator and existing BenchReport import implemented on this
+branch; no built-in hardware baseline, new probe runner or real-device validation.
+
+## Available now
+
+```bash
+omnismi perf-doctor --input measurement.json --baseline baseline.json
+omnismi perf-doctor --input bench-report.json --baseline baseline.json --context conditions.json --result-id bandwidth-0-0
+```
+
+Python: `from omnismi.performance import evaluate_performance, measurement_from_bench`.
+Each comparison returns JSON with independent expected-sustained/theoretical-peak
+percentages, exact signature mismatches, provenance and threshold-policy evidence.
+New-command exits: 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, 64 invalid input.
+
+Version 1 measurement fields: `schema_version`, `metric` (`memory_bandwidth` or
+`compute_throughput`), `unit` (`bytes/s` or `FLOP/s`), `value`, `signature`, `source`.
+A source needs an `id` and `description`; `url` is optional and never fetched.
+
+Baseline fields: `schema_version`, `baseline_id`, `metric`, `signature`,
+`references` and optional `policy`. Each reference (`expected_sustained` or
+`theoretical_peak`) needs positive finite `value`, matching `unit` and `source`.
+Sustained references additionally need `sample_count >= 2`, nonnegative
+`standard_deviation` in the same unit, and nonempty `run_ids`. These are provenance
+requirements, not certification of user-supplied data.
+
+`policy` supplies `fail_below_percent`, `pass_at_least_percent` and `rationale`,
+with 0 <= fail < pass <= 100. Values below fail are FAIL; values at or above pass
+are PASS; intermediate values are WARN. Without policy, ratios remain available
+but the result is INCONCLUSIVE. Above-theoretical measurements also become
+INCONCLUSIVE. Values above 100% are preserved, with an explicit review reason.
+
+Required matching signature fields: vendor, sku, form_factor, partition,
+memory_mode, probe, probe_version, pattern, dtype, buffer_bytes, byte_convention,
+runtime, runtime_version, driver_version, device_count, power_limit_w, clock_policy.
+Unknown/missing values block comparison. No implicit GB/GiB conversion or SKU alias
+matching occurs. `baseline_missing` is explicit; there are no default thresholds.
+
+Existing BenchReport input imports one successful bandwidth result. Multi-result
+reports need `--result-id`. It verifies byte accounting, preserves captured vendor,
+driver and probe parameters, and leaves uncaptured conditions unknown. `--context`
+may fill missing signature fields but cannot override recorded observations.
+For imported reports the probe version is `omnismi/<version>/torch-v1` and byte
+convention is `read_plus_write`. Context must come from actual run conditions;
+missing values are never copied from the baseline merely to make them match.
+
+See `examples/performance/` for explicitly synthetic arithmetic examples. They
+are not hardware reference values. File inputs are bounded to 1 MiB; no benchmark
+or device access occurs in this command. The planned `--run` path below is not yet
+implemented.
 
 ## User-facing contract
 
