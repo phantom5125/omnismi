@@ -41,3 +41,12 @@ Test missing SDK/tool, old/unknown versions, multi-device identity, unavailable
 metrics, malformed output, timeout, permission denial and exact unit conversion.
 Hardware evidence includes model, OS, driver/SDK, tool output and normalized report.
 Until then label only fixture-tested/experimental, never hardware-verified.
+
+## User-confirmed SDK direction
+
+Use T-Head SAIL SDK as the primary software stack. The official developer-center
+search index lists runtime/driver APIs, KMD ECC/XID references and interconnect
+documentation. Retrieve and pin those specific manuals before coding bindings or
+rules; the index is not an ABI reference. The older Alibaba Cloud SDK guide above
+is supplementary. PPU XID codes must use vendor `alibaba`, never inherit NVIDIA
+Xid rules merely because the namespace name matches.
