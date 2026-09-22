@@ -75,6 +75,21 @@ Run the same CLI through the module entrypoint if needed:
 python -m omnismi
 ```
 
+### 2.0 development: offline diagnosis
+
+On the `codex/v2-diagnostics` development branch, agents can interpret reviewed
+NVIDIA Xid, AMD RAS counter and PCIe AER evidence without an LLM or network call:
+
+```bash
+omnismi decode --vendor nvidia --namespace xid --code 48
+omnismi diagnose --input kernel.log
+```
+
+These commands return JSON with evidence, sources, applicability limits and next
+checks. Findings describe recorded events; they do not confirm a faulty physical
+unit or certify current health. See [coverage and examples](docs/v2/diagnostics.md).
+This is development functionality, not a released 2.0 package.
+
 ## Install
 
 Omnismi core is lightweight and has no mandatory vendor dependency.

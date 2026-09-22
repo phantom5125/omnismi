@@ -1,7 +1,8 @@
 # Omnismi 2.0 implementation plan
 
-Status: design and branch bootstrap, 2026-09-22. The commands below are proposed,
-not shipped capabilities. No new backend has been validated on hardware.
+Status: initial offline diagnostics implemented on `codex/v2-diagnostics`,
+2026-09-22; other tracks remain designs. See that branch's diagnostics guide for
+actual commands and limits. No new backend has been validated on hardware.
 
 ## Goal
 
