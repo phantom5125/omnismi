@@ -1,124 +1,85 @@
-# Agent-native diagnosis and offline error knowledge
+# Agent-native diagnostics
 
-Status: first implementation available on `codex/v2-diagnostics`; fixture-tested,
-not hardware-validated. Active self-tests and causal event correlation remain planned.
-
-## Available now
-
-The library runs offline without vendor dependencies. Its packaged catalog has 15
-reviewed rules: NVIDIA Xid 13/31/43/48/63/64/74/79/94/95, AMD RAS ce/ue counter
-semantics, and PCIe AER corrected/nonfatal/fatal severity. PPU Xid and NVIDIA SXid
-are intentionally not mapped to NVIDIA Xid rules. The full vendor code catalog is
-not implemented. Each interpretation includes source URLs, source revisions,
-catalog revision, applicability limits, possible affected units and suggested checks.
-
-```python
-from omnismi.diagnostics import decode_error, diagnose
-
-report = decode_error("nvidia", "xid", 48)
-report = diagnose("[ 10.5] NVRM: Xid (0000:03:00): 79, device unreachable")
-report = diagnose(
-    "ue: 0\nce: 5", input_format="ras", block="umc", pci_address="0000:41:00.0"
-)
-```
+All interpretation runs offline from a versioned packaged catalog. Current coverage:
+109 active entries from the current NVIDIA Xid table, 68 PPU001 and 87 PPU0015 XIDs,
+and 9 AMD RAS / PCIe AER / PPU ECC rules: **273 rules**. Vendor tables are reduced
+to numeric/client facts, applicability flags and original summaries; entire manuals
+are not redistributed. Rules cite source URLs/review dates; imported vendor tables
+also carry source hashes.
 
 ```bash
-omnismi decode --vendor nvidia --namespace xid --code 48
+omnismi decode --vendor nvidia --namespace xid --code 119 --model H100
+omnismi decode --vendor alibaba --namespace xid-ppu0015 --code 4997
 omnismi diagnose --input kernel.log
-cat kernel.log | omnismi diagnose --input -
 omnismi diagnose --input umc-counts.txt --format ras --block umc --pci-address 0000:41:00.0
+omnismi diagnose --input normalized.json --format events
 omnismi diagnose --collect passive --timeout 5
+omnismi diagnose --collect hardware --timeout 30
+omnismi diagnose --collect hardware --vendor alibaba --timeout 30
+omnismi diagnose --self-test --vendor nvidia --device 0 --memory-mib 64 --timeout 30
 ```
 
-New commands always output JSON. `--driver-version` and `--model` retain supplied
-context; they do not certify model/driver applicability. `--include-raw` adds
-sanitized source lines; by default only normalized evidence is emitted. Repeated
-findings on the same reported device share one explanation and retain all evidence
-IDs, reducing repeated text for agents. This grouping makes no causal inference.
+`decode_error`, `diagnose`, `collect_hardware` and `run_probe` are public module-level
+Python entry points in `omnismi.diagnostics`, `omnismi.diagnostics.hardware` and
+`omnismi.probe_runtime`. They return dictionaries suitable for JSON; no LLM or web
+request occurs. New CLI commands return JSON and 0/1/2/3 for PASS/WARN/FAIL/INCONCLUSIVE,
+64 for bad input. Error severity is not a current hardware-health verdict.
 
-These commands use exits 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE and 64 invalid input.
-Existing commands are unchanged. Here WARN/FAIL describe the supplied event severity,
-not present hardware health. `scope.current_hardware_health` remains INCONCLUSIVE.
-Unknown codes, empty logs and zero counter snapshots never prove a healthy device.
+## Normalized observations
 
-Passive collection reads Linux `dmesg` only, without sudo, clearing logs or changing
-hardware state. Missing tools, access denial, truncation and timeout are explicit.
-There is no collection during ordinary `decode` or `diagnose --input` calls.
-Limits: 1 MiB input, 500 nonblank events (lower with `--max-events`), 4096 characters
-per line, and at most 60 seconds for collection. A truncated code is never decoded
-as a different complete code. Regular file input must be UTF-8; named pipes use stdin.
+`--format events` accepts an array, for example:
 
-RAS input is the documented sysfs counter format, with explicit block/PCI identity;
-arbitrary AMD RAS prose in dmesg remains unmatched. dmesg parsing recognizes NVRM
-Xid and PCIe AER severity lines. Other lines are preserved as unrecognized evidence.
-Boot-relative timestamps are retained without inventing dates; wall-clock parsing,
-GPU UUID association, event freshness, reset history and cross-line causality are
-not yet implemented. Missing PCI function numbers are not invented for joins.
-
-## Remaining milestones
-
-- Version-specific catalog expansion and official PPU/Cambricon error references.
-- More vendor log fixtures, identity/time normalization and corroboration rules.
-- Read-only device telemetry beyond kernel logs, then explicit active self-tests.
-- Real-device validation; no fixture result can upgrade hardware support status.
-
-## User-facing contract
-
-Longer-term API and commands (the self-test command is not implemented):
-
-```text
-omnismi decode --vendor nvidia --namespace xid --code 48
-omnismi diagnose --input kernel.log --format dmesg
-omnismi diagnose --collect passive
-omnismi diagnose --self-test --timeout 60
+```json
+[{"vendor":"alibaba","namespace":"xid-ppu0015","code":4997,"pci_address":"0000:41:00.0","timestamp":"12.5","time_basis":"boot_relative"}]
 ```
 
-Each call returns the shared JSON envelope. `decode` is a pure offline lookup;
-`diagnose` normalizes and correlates supplied evidence; passive collection is
-explicit; self-test has a separate execution path. Log ingestion never runs text
-from input as a command. Limit bytes/events and report truncation.
+This boundary lets any vendor command collector supply evidence without teaching
+an agent to reinterpret a manual. Each event explicitly names vendor/namespace.
+PPU generations are separate namespaces because code meanings/clients differ.
+Unknown generations/codes remain INCONCLUSIVE. Never reuse NVIDIA Xid meanings
+for PPU or Cambricon events. RAS counters use their dedicated input format with
+block and PCI identity rather than pretending to be Xid codes.
 
-## Knowledge model
+Kernel parsing recognizes NVRM Xid (including `PCI:` addresses), preceding driver
+UUID lines and PCIe AER severities. Identity joins preserve omitted PCI function
+numbers. Unknown dmesg prose is retained as unmatched evidence. Repeated findings
+share their explanation but preserve evidence IDs and UUID identity.
 
-Each rule contains vendor, namespace (Xid, SXid, AMD RAS, PCIe AER), code/block,
-applicable architectures and driver versions, short explanation, severity,
-possible affected units, alternative software/environment causes, evidence needed,
-next checks, source section/revision and catalog revision. Use independent namespaces:
-RAS block/counter events and arbitrary dmesg messages are not interchangeable with Xid.
+## Collection and self-test
 
-Store original summaries and normalized facts in a packaged, versioned catalog.
-Review against the official references in `sources.json`; online updates are a
-maintenance operation, never an implicit part of an agent request. Unknown codes,
-unknown driver versions and ambiguous matches retain raw evidence with explicit
-coverage limits. A recognized error is not proof of a defective memory bank or die.
+`--collect passive` only reads dmesg. `--collect hardware` runs an isolated worker
+that combines bounded dmesg, vendor management inventory/metrics, AMD RAS sysfs
+counter files and documented PPU ECC counters. UUIDs bind PPU telemetry to inventory;
+CNDEV per-field return codes explain missing metrics. Nonzero historical counters
+carry explicit volatile/aggregate or snapshot-not-delta semantics. A timeout,
+missing SDK or permission failure is incomplete evidence, never a healthy result.
 
-Findings include `affected_units` (memory, compute, PCIe, interconnect, power/thermal,
-unknown), `assessment`, `evidence_ids`, `alternative_causes`, `next_checks`, and
-`source_ids`. Localize only to the granularity explicitly supported by the evidence.
-Use a consistent device identity and bounded time window for correlation. Preserve
-correctable vs uncorrectable and historical counts vs new deltas; old log entries
-must not silently represent current health. An empty/inaccessible log is inconclusive.
+`--self-test` explicitly runs copy and vector-add correctness checks with four
+representable data patterns, then a small matrix multiplication. It runs only on
+the selected compute-runtime index, in a subprocess killed on deadline. It neither
+resets devices nor modifies other processes. The tensor budget is 1..4096 MiB;
+it excludes runtime context, allocator and library workspace overhead. Tests cover
+allocated buffers/operations only and cannot certify the entire card or prove a
+specific physical unit is faulty. Runtime exceptions are INCONCLUSIVE; observed
+wrong results are FAIL with unconfirmed hardware causality.
 
-## Implementation sequence
+NVIDIA/AMD torch and modern torch_mlu are implemented runtime paths. SAIL active
+compute remains gated pending a verified runtime binding/identity contract.
 
-1. `diagnostics/catalog.py` and catalog package data: validate schema/provenance,
-   deterministic matching, pure decode API. First curated rules: a reviewed subset
-   of Xids covering memory, compute and link symptoms; no fabricated completeness.
-2. `diagnostics/parsers.py`: NVRM Xid fixtures, AMD RAS block/counter fixtures,
-   generic unmatched dmesg events; normalize timestamp, device identity and scope.
-3. `diagnostics/engine.py`: evidence-linked findings, unknown coverage and compact
-   JSON. Do not overwrite a known device identity with a process-local index.
-4. `diagnostics/collectors.py`: bounded kernel-log and vendor read-only telemetry,
-   collector status and access failures. Self-tests expose their requirements and
-   workload impact; no reset, RAS injection or automatic remediation.
-5. Wire CLI and add source/catalog revision to every report. Later extend specific
-   rules for PPU/Cambricon only after official error documentation is obtained.
+## Interpretation boundaries
 
-## Acceptance
+NVIDIA rules retain current catalog model flags and reference recovery buckets.
+An explicitly excluded A100/H100/B100/GB200 model is INCONCLUSIVE. Unrecognized
+model names and driver strings are retained as context, not certified. Recovery
+buckets are references only; no reset/reboot/action is executed. Informational
+catalog events such as SMBPBI test messages do not become fault verdicts.
 
-Offline one-call decoding works from an installed wheel without an LLM or internet.
-Every explanation has a source and applicability. Tests cover unknown codes,
-malformed logs, multi-device correlation, stale events, ANSI/control characters,
-ambiguous dates, missing permission, timeouts, truncation and wrong driver versions.
-Synthetic cases cannot claim hardware-confirmed diagnosis. Real logs/self-tests
-require per-vendor hardware evidence before marking that path validated.
+Top-level Xid decoding does not implement revision-dependent IntrInfo/subcode
+recovery logic. Current-health, exact event age, causality, transient-versus-permanent
+failure and complete board coverage require additional evidence. Unknown codes
+always remain explicit rather than receiving a guessed closest match.
+
+Input bounds: 1 MiB, 500 nonblank/normalized events, 4096 characters per log line.
+Truncated identifiers are never interpreted as a different code. Raw sanitized log
+lines are opt-in with `--include-raw`; active and hardware modes report structured
+observations. Vendor command output and SDK hangs are bounded by the worker.

@@ -1,10 +1,10 @@
 # Omnismi 2.0 implementation plan
 
-Status: initial diagnostics, performance comparison, topology and SAIL PPU
-implementations are combined on `codex/v2-preview`, 2026-09-22. Independent draft
-PRs remain open against `codex/v2-integration`; see [delivery status](STATUS.md)
-for exact scope, validation and remaining work. Cambricon is interface research
-only. No new backend has been validated on hardware.
+Status: the second implementation on `codex/v2-runtime-completion` extends the
+combined `codex/v2-preview` with active probes, baseline authoring, live topology,
+full PPU telemetry and an SDK-compiled Cambricon adapter. See [delivery status](STATUS.md)
+for commands, validation and remaining external evidence. No new card has been
+hardware-validated or promoted to verified status.
 
 ## Goal
 

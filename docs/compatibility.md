@@ -118,6 +118,19 @@ the required evidence template.
 ## 2.0 development: Alibaba PPU
 
 The experimental `alibaba` backend uses the official SAIL PPU-SMI CSV interface.
-It supports physical device inventory and memory snapshots only, with no Python
+It supports physical inventory, memory and documented telemetry, with no Python
 vendor dependency. Fixtures pass; no PPU hardware/model is marked verified.
 See [adapter scope](v2/alibaba-ppu.md) for visibility and capability limitations.
+
+## 2.0 development runtime capabilities
+
+The `codex/v2-runtime-completion` branch adds SAIL PPU identity/memory/utilization/
+temperature/power/clocks, and a CNDEV SDK-compiled Cambricon collector for the same
+normalized fields. Both are **🧪 Awaiting User Validation**, not verified models.
+Their management view may differ from process-runtime/MIG/MIM visibility.
+
+Active bounded probes use NVIDIA/AMD torch or modern torch_mlu. SAIL active
+compute remains explicitly INCONCLUSIVE until its runtime identity/API is verified.
+Live vendor topology covers NVIDIA NVLink/MIG and PPU ICN; generic Linux PCI/NUMA/
+NIC/RDMA discovery is vendor independent. Read [the current status](v2/STATUS.md)
+for precise limitations and [Cambricon setup](v2/cambricon.md) for SDK compilation.

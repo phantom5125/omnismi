@@ -27,7 +27,9 @@ def test_normalized_inventory_memory_and_stable_device_identity(monkeypatch):
     assert metrics.memory_used_bytes == 16 * 1024**2
     assert metrics.utilization_percent is None
     assert metrics.index == 3 and metrics.timestamp_ns > 0
-    assert len(calls) == 1
+    assert len(calls) == 2
+    assert calls[1][1:] == ["-q"]
+    assert backend._telemetry_error is not None
     assert calls[0][1].startswith("--query-ppu=")
     assert calls[0][2] == "--format=csv,nounits"
     backend.close()

@@ -57,7 +57,7 @@
       "publisher": "T-Head",
       "title": "T-Head SAIL SDK developer center",
       "url": "https://developer.t-head.cn/",
-      "scope": "User-selected primary PPU source; official search index identifies SAIL SDK, KMD ECC/XID references and interconnect docs. Specific management API signatures not yet retrieved."
+      "scope": "Primary SAIL source. Documented PPU-SMI v2.1.1 queries and PPU001/PPU0015 XID tables were retrieved through the public documentation API."
     },
     {
       "id": "nvidia-xid-r555",
@@ -72,6 +72,43 @@
       "title": "PCI Express Advanced Error Reporting Driver Guide",
       "url": "https://docs.kernel.org/PCI/pcieaer-howto.html",
       "scope": "AER severity semantics and reporting-device identity"
+    },
+    {
+      "id": "alibaba-xid-ppu001",
+      "url": "https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=182",
+      "revision": "SAIL developer documentation snapshot 2026-09-22",
+      "content_sha256": "b614138a061388d879a698fdd049d4f5862b3dd5ebf683378d5e1b1b5421abb4",
+      "section": "3. XID Error table",
+      "reviewed_at": "2026-09-22"
+    },
+    {
+      "id": "alibaba-xid-ppu0015",
+      "url": "https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=183",
+      "revision": "SAIL developer documentation snapshot 2026-09-22",
+      "content_sha256": "2e3d9ff50f20340534a0f51bfeabde52b916ee81fb0af8f1b35187e1b62cb30e",
+      "section": "3. XID Error table",
+      "reviewed_at": "2026-09-22"
+    },
+    {
+      "id": "alibaba-ppu-smi",
+      "url": "https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=221",
+      "revision": "SAIL v2.1.1 reviewed 2026-09-22",
+      "section": "3.1.4 ECC",
+      "reviewed_at": "2026-09-22"
+    },
+    {
+      "id": "nvidia-xid-catalog-20260922",
+      "url": "https://docs.nvidia.com/deploy/xid-errors/analyzing-xid-catalog.html",
+      "revision": "Ampere-and-newer web catalog reviewed 2026-09-22",
+      "content_sha256": "6d807e595ec012270a80ab19cc4c3f69abc5a462d1452d376cd21c1b0edb0802",
+      "section": "Table 1: Xids; only active rows, excluding Unused",
+      "reviewed_at": "2026-09-22"
+    },
+    {
+      "id": "cambricon-exporter-pinned",
+      "publisher": "Cambricon",
+      "url": "https://github.com/Cambricon/mlu-exporter/tree/648a19c7d781ada2ea693e46edc562aa57f79be4",
+      "scope": "CNDEV API usage, physical-memory MiB conversion and metric units; target header owns native ABI."
     }
   ]
 }

@@ -14,7 +14,7 @@ from omnismi.diagnostics.parsers import MAX_LINE
 
 def test_catalog_is_offline_versioned_and_has_resolvable_sources():
     catalog = load_catalog()
-    assert len(catalog["rules"]) == 15
+    assert len(catalog["rules"]) == 273
     for rule in catalog["rules"]:
         finding = decode_error(rule["vendor"], rule["namespace"], rule["code"])
         assert finding["data"]["findings"][0]["recognized"]

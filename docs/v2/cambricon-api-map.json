@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "native_binding_waiting_for_versioned_headers",
+  "status": "implemented_via_sdk_compiled_process_boundary",
   "reviewed_at": "2026-09-22",
   "target_model": null,
   "official_example": {
@@ -10,19 +10,79 @@
     "header_requirement": "README requires the driver-package cndev.h version 6.5.24; it is not included in this repository tree"
   },
   "interfaces": [
-    {"capability": "device_count", "function": "cndevGetDeviceCount", "structure": "cndevCardInfo_t", "fields": ["version", "number"]},
-    {"capability": "uuid", "function": "cndevGetUUID", "structure": "cndevUUID_t", "fields": ["version", "uuid"]},
-    {"capability": "memory", "function": "cndevGetMemoryUsageV2", "structure": "cndevMemoryInfoV2_t", "fields": ["physicalMemoryUsed", "globalMemory", "virtualMemoryUsed", "virtualMemoryTotal", "reservedMemory"]},
-    {"capability": "power", "function": "cndevGetDevicePowerInfo", "structure": "cndevDevicePowerInfo_t", "fields": ["usage"]},
-    {"capability": "clocks", "function": "cndevGetFrequencyInfo", "structure": "cndevFrequencyInfo_t", "fields": ["version", "boardFreq", "ddrFreq", "boardDefaultFreq"]},
-    {"capability": "driver_version", "function": "cndevGetVersionInfo", "structure": "cndevVersionInfo_t", "fields": ["version", "driverMajorVersion", "driverMinorVersion", "driverBuildVersion"]}
+    {
+      "capability": "device_count",
+      "function": "cndevGetDeviceCount",
+      "structure": "cndevCardInfo_t",
+      "fields": [
+        "version",
+        "number"
+      ]
+    },
+    {
+      "capability": "uuid",
+      "function": "cndevGetUUID",
+      "structure": "cndevUUID_t",
+      "fields": [
+        "version",
+        "uuid"
+      ]
+    },
+    {
+      "capability": "memory",
+      "function": "cndevGetMemoryUsageV2",
+      "structure": "cndevMemoryInfoV2_t",
+      "fields": [
+        "physicalMemoryUsed",
+        "globalMemory",
+        "virtualMemoryUsed",
+        "virtualMemoryTotal",
+        "reservedMemory"
+      ]
+    },
+    {
+      "capability": "power",
+      "function": "cndevGetDevicePowerInfo",
+      "structure": "cndevDevicePowerInfo_t",
+      "fields": [
+        "usage"
+      ]
+    },
+    {
+      "capability": "clocks",
+      "function": "cndevGetFrequencyInfo",
+      "structure": "cndevFrequencyInfo_t",
+      "fields": [
+        "version",
+        "boardFreq",
+        "ddrFreq",
+        "boardDefaultFreq"
+      ]
+    },
+    {
+      "capability": "driver_version",
+      "function": "cndevGetVersionInfo",
+      "structure": "cndevVersionInfo_t",
+      "fields": [
+        "version",
+        "driverMajorVersion",
+        "driverMinorVersion",
+        "driverBuildVersion"
+      ]
+    }
   ],
   "unverified": [
-    "C field types, structure sizes/alignment and array capacities",
-    "Function prototypes and handle lifetime from matching SDK headers",
-    "Physical versus virtual memory units and semantics",
-    "Power and clock units and unsupported-value conventions",
-    "Model/driver compatibility and hardware parity"
+    "Real SDK compilation using the user-installed matching header/library",
+    "Model/driver compatibility and hardware parity",
+    "MIM/SMLU and process-runtime visibility"
   ],
-  "next_input": "A matching CNDEV header/manual set and SDK/driver version, or an authorized development host with that SDK installed"
+  "next_input": "Linux host with matching CNDEV headers/library and an MLU for real build and parity validation",
+  "verified_units": {
+    "memory": "MiB in CNDEV converted to bytes, matching official exporter collector",
+    "power": "W",
+    "clocks": "MHz",
+    "temperature": "Celsius",
+    "utilization": "percent"
+  },
+  "abi_strategy": "Every C structure and function prototype comes from the installed cndev.h at compile time; Python consumes only the Omnismi JSON protocol."
 }
