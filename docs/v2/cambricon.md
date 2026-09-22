@@ -3,6 +3,25 @@
 Status: research and implementation contract; adapter not implemented or registered.
 Target MLU model, Neuware/CNDEV version and access to full SDK documentation are open.
 
+## Research completed on 2026-09-22
+
+The [official MLU exporter](https://github.com/Cambricon/mlu-exporter/tree/648a19c7d781ada2ea693e46edc562aa57f79be4)
+provides current management API usage. The repository explicitly requires obtaining
+`cndev.h` version 6.5.24 from a driver package; that header is absent from its tree.
+See `cambricon-api-map.json` for the pinned commit, verified function/structure
+names and fields, and the remaining ABI/units checks.
+
+The [official older CNMON example](https://github.com/Cambricon/paddle_mlu/blob/master/install/paddle_install_cn.md)
+demonstrates a v4.20.11 table containing device ordinal, model and metrics, but no
+stable UUID/PCI identity in its default table. That snapshot is insufficient to
+implement reliable cross-refresh device handles or claim support for unspecified
+current models. No table-only placeholder has been registered as a backend.
+
+The next concrete input is a matching CNDEV header/manual set plus SDK/driver
+version, or access to a development environment with that SDK installed. No model
+selection is required to implement the shared interface, but hardware parity will
+still require an actual card. Native adapter implementation remains pending.
+
 ## Verified starting point
 
 Official source `cambricon-cndev` in `sources.json` is the CNDev developer manual
