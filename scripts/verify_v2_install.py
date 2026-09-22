@@ -42,6 +42,4 @@ with tempfile.TemporaryDirectory() as temporary:
     assert (
         json.loads(result.stdout)["scope"]["current_hardware_health"] == "INCONCLUSIVE"
     )
-print(
-    "Installed wheel: catalog, native source and five CLI entry points passed"
-)
+print("Installed wheel: catalog, native source and five CLI entry points passed")
