@@ -86,3 +86,10 @@ record the source revision/section, applicability (model/driver), review date an
 rule revision. Store original concise summaries and normalized facts; do not
 redistribute entire vendor manuals without an appropriate license. Test the
 installed offline catalog, including unknown codes and out-of-scope versions.
+
+## Confirmed user scope
+
+PPU work targets the T-Head SAIL SDK using https://developer.t-head.cn/ as the
+primary vendor entry (the supplied `/home` route could not be retrieved by the
+research tool). Exact SKU and installed SDK version remain open. Cambricon has no
+specified target card; do not select a model implicitly or promise model coverage.
