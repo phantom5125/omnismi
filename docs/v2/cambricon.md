@@ -40,3 +40,8 @@ changes. Do not download proprietary SDKs or register a nonfunctional placeholde
 Initial completion is discovery/metrics parity. Topology, error decoding and
 benchmarks are separate capability gates requiring documented APIs and hardware
 validation; lack of one capability must not hide a device from basic inventory.
+
+## User-confirmed hardware scope
+
+No target card is selected. Build the versioned CNDEV capability boundary first;
+choose hardware validation targets only when actual hardware or fixtures exist.
