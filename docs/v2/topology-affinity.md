@@ -1,6 +1,45 @@
 # Topology and affinity discovery
 
-Status: planned; topology collectors and recommendations are not implemented.
+Status: initial Linux filesystem discovery, constrained affinity recommendations
+and offline NVIDIA matrix import implemented; fixture-tested, not hardware-validated.
+
+## Available now
+
+```bash
+omnismi topology
+omnismi topology --input topology.json --recommend-affinity --device pci:0000:41:00.0
+omnismi topology --nvidia-matrix saved-nvidia-topo.txt
+```
+
+Python APIs in `omnismi.topology`: `discover_topology`, `recommend_affinity`,
+`parse_nvidia_matrix`, `parse_cpu_list`. The CLI emits JSON with exit 0 PASS,
+1 WARN, 3 INCONCLUSIVE, 64 invalid input. Discovery status describes collection,
+not hardware health. `--device` requires the stable graph ID, not a GPU ordinal.
+
+The collector reads Linux sysfs PCI identities, ancestry, link speed/width,
+NUMA locality, NIC and RDMA-interface attachment. PCI display/processing class
+is labeled an accelerator *candidate*, not a confirmed supported compute device.
+Process CPU and memory masks come from `/proc/self/status`, including effective
+cpuset restrictions. Suggestions intersect local CPUs and allowed memory nodes;
+missing masks/NUMA or an empty intersection never yield an arbitrary binding.
+No affinity, hardware configuration or scheduler state is changed.
+
+Linux-only live discovery returns explicit INCONCLUSIVE on other platforms.
+Python callers can inject filesystem roots to replay fixtures. Directory entry
+and file-size bounds avoid unlimited enumeration; missing data remains null or
+an explicit limitation. CPU/node masks are bounded to identifiers 0..65535.
+
+NVIDIA import accepts a complete symmetric `nvidia-smi topo -m` matrix, preserving
+path labels and NVLink bond count. It does not invoke the tool or join its GPU/NIC
+ordinals to PCI identities. Matrix CPU-affinity columns are not used as process
+permission evidence. Unknown layouts fail explicitly. NVLink bond count is not
+measured bandwidth, direct-link proof or confirmation that P2P/RDMA is enabled.
+
+Remaining: vendor API live collectors and identity joins, MIG/partition modeling,
+AMD/PPU/Cambricon interconnects, cgroup-change/race handling and hardware validation.
+The graph is a point-in-time visible-filesystem view, not a complete cluster graph.
+Official references: Linux PCI sysfs and proc documentation (embedded in reports),
+and NVIDIA's topology command reference (embedded in imported matrices).
 
 ## User-facing contract
 
