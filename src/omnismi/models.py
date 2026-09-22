@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-VendorName = Literal["nvidia", "amd", "google"]
+VendorName = Literal["nvidia", "amd", "google", "alibaba"]
 
 
 @dataclass(frozen=True, slots=True)
