@@ -27,6 +27,7 @@ def query_text(argv: list[str]) -> str:
     assert process.stdout is not None and process.stderr is not None
     chunks: dict[str, bytearray] = {"stdout": bytearray(), "stderr": bytearray()}
     deadline = time.monotonic() + 5
+    reaped = False
     try:
         with selectors.DefaultSelector() as selector:
             selector.register(process.stdout, selectors.EVENT_READ, "stdout")
@@ -45,17 +46,20 @@ def query_text(argv: list[str]) -> str:
                         chunks[key.data].extend(chunk)
             try:
                 process.wait(timeout=max(0.001, deadline - time.monotonic()))
+                reaped = True
             except subprocess.TimeoutExpired as exc:
                 raise BackendError("Vendor query timed out") from exc
         if process.returncode:
             raise BackendError(f"Vendor query failed (exit {process.returncode})")
         return bytes(chunks["stdout"]).decode("utf-8", errors="strict")
     finally:
-        # An error can leave children holding pipes even if the direct child exited.
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        process.wait()
+        # On interrupted collection, children can still hold the query pipes.
+        # Once wait() reaps the child, its PID may be reused: never signal it.
+        if not reaped:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
         process.stdout.close()
         process.stderr.close()
