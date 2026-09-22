@@ -28,6 +28,7 @@ _BACKEND_NAMES = {
     "AmdBackend": "amdsmi",
     "GoogleTpuBackend": "tpumonitoring",
     "AlibabaPpuBackend": "ppu-smi (HGML)",
+    "CambriconBackend": "CNDEV SDK collector",
 }
 _VISIBLE_STATUS_MATCHED = "MATCHED"
 _VISIBLE_STATUS_MISMATCHED = "MISMATCHED"
@@ -74,7 +75,7 @@ def _build_common_scope_group(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--vendor",
-        choices=["nvidia", "amd", "google", "alibaba"],
+        choices=["nvidia", "amd", "google", "alibaba", "cambricon"],
         help="Restrict output to one vendor.",
     )
 
@@ -101,7 +102,7 @@ def build_overview_parser() -> argparse.ArgumentParser:
         description="Show a cross-vendor accelerator summary for the current runtime.",
         epilog=(
             "V2 preview commands: omnismi decode --help; omnismi diagnose --help; "
-            "omnismi perf-doctor --help; omnismi topology --help."
+            "omnismi perf-doctor --help; omnismi topology --help; omnismi cndev-build --help."
         ),
     )
     _build_common_scope_group(parser)
@@ -1919,6 +1920,10 @@ def _run_placeholder(command_name: str) -> int:
 def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
 
+    if raw_args and raw_args[0] == "cndev-build":
+        from omnismi.backends.cndev_build import run
+
+        return run(raw_args[1:])
     if raw_args and raw_args[0] in {"decode", "diagnose"}:
         from omnismi.diagnostics.cli import run
 
