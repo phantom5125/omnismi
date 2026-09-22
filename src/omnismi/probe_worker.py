@@ -15,6 +15,8 @@ from omnismi import __version__
 
 
 def execute(config: dict[str, Any]) -> dict[str, Any]:
+    if config["vendor"] not in {"nvidia", "amd", "cambricon"}:
+        return {"status": "INCONCLUSIVE", "reason": "unsupported_torch_vendor"}
     import torch
 
     vendor = config["vendor"]
@@ -27,11 +29,6 @@ def execute(config: dict[str, Any]) -> dict[str, Any]:
         hip = bool(getattr(torch.version, "hip", None))
         if (vendor == "amd") != hip:
             return {"status": "INCONCLUSIVE", "reason": "runtime_vendor_mismatch"}
-        if vendor == "alibaba":
-            return {
-                "status": "INCONCLUSIVE",
-                "reason": "SAIL_torch_runtime_identity_not_verified",
-            }
     if not runtime.is_available() or config["device"] >= runtime.device_count():
         return {"status": "INCONCLUSIVE", "reason": "runtime_device_unavailable"}
     index = config["device"]
@@ -137,15 +134,16 @@ def execute(config: dict[str, Any]) -> dict[str, Any]:
                 "value": work * 20 / elapsed,
             }
         )
-    if compute:
-        b.fill_(2 * size)
-        if not torch.equal(c, b):
-            return {
-                "status": "FAIL",
-                "reason": "matmul_data_mismatch",
-                "checks": checks,
-                "hardware_fault_confirmed": False,
-            }
+    b.fill_(2 * size if compute else (1 if config["pattern"] == "copy" else 3))
+    sync()
+    checks.append({"name": "timed_result", "passed": bool(torch.equal(c, b))})
+    if not checks[-1]["passed"]:
+        return {
+            "status": "FAIL",
+            "reason": "timed_result_data_mismatch",
+            "checks": checks,
+            "hardware_fault_confirmed": False,
+        }
     values = [sample["value"] for sample in samples]
     signature = {
         "vendor": vendor,

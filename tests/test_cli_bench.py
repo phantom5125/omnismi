@@ -204,12 +204,12 @@ def test_bench_bandwidth_error_result_fails_summary(
     assert payload["results"][0]["execution"]["errors"] == ["runtime unavailable"]
 
 
-def test_bench_matmul_remains_placeholder(backend_factories, monkeypatch, capsys) -> None:
+def test_bench_matmul_requires_explicit_vendor(backend_factories, monkeypatch, capsys) -> None:
     backend_factories([_DummyBackend])
     _set_fixed_environment(monkeypatch)
 
     exit_code = main(["bench", "matmul"])
 
     captured = capsys.readouterr()
-    assert exit_code == 2
-    assert "`omnismi bench matmul` is planned but not implemented yet." in captured.err
+    assert exit_code == 64
+    assert "--vendor" in captured.err

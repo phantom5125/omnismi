@@ -67,7 +67,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "omnismi.diagnostics" = ["catalog.json"]
-"omnismi.backends" = ["cndev_probe.c"]
+"omnismi.backends" = ["cndev_probe.c", "sail_probe.hg", "sail_probe_host.hpp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -129,8 +129,10 @@ temperature/power/clocks, and a CNDEV SDK-compiled Cambricon collector for the s
 normalized fields. Both are **🧪 Awaiting User Validation**, not verified models.
 Their management view may differ from process-runtime/MIG/MIM visibility.
 
-Active bounded probes use NVIDIA/AMD torch or modern torch_mlu. SAIL active
-compute remains explicitly INCONCLUSIVE until its runtime identity/API is verified.
+Active bounded probes use NVIDIA/AMD torch, modern torch_mlu or an SDK-compiled
+native SAIL HGGC probe (`omnismi sail-build`). SAIL runtime identity is obtained
+from HGGC directly. Local synthetic-runtime tests do not certify the real SDK
+compiler, ABI or any PPU/MLU model; target-host validation remains required.
 Live vendor topology covers NVIDIA NVLink/MIG and PPU ICN; generic Linux PCI/NUMA/
 NIC/RDMA discovery is vendor independent. Read [the current status](v2/STATUS.md)
 for precise limitations and [Cambricon setup](v2/cambricon.md) for SDK compilation.

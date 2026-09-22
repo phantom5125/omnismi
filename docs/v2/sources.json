@@ -109,6 +109,30 @@
       "publisher": "Cambricon",
       "url": "https://github.com/Cambricon/mlu-exporter/tree/648a19c7d781ada2ea693e46edc562aa57f79be4",
       "scope": "CNDEV API usage, physical-memory MiB conversion and metric units; target header owns native ABI."
+    },
+    {
+      "id": "thead-hggc-programming",
+      "publisher": "T-Head",
+      "url": "https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=196",
+      "revision": "SAIL v2.1.1 reviewed 2026-09-22",
+      "content_sha256": "348185dea485327c0d18319e62816383463071a60cea4a6dd4957889ceacf7b4",
+      "scope": "Native HGGC memory operations, kernel syntax, synchronization and HGGC_VISIBLE_DEVICES runtime index semantics."
+    },
+    {
+      "id": "thead-hgcc-compiler",
+      "publisher": "T-Head",
+      "url": "https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=210",
+      "revision": "SAIL v2.1.1 reviewed 2026-09-22",
+      "content_sha256": "27b02dc147ed5db9ae7d1bd4bdc4038a6ff0e7234771c62be286635daec68e1f",
+      "scope": "hgcc .hg compilation and explicit ppu_10/ppu_15 target options."
+    },
+    {
+      "id": "thead-hggc-samples-pinned",
+      "publisher": "T-Head",
+      "url": "https://github.com/t-head/hggc-samples/tree/ff1a055950ba70c308bf27357acf9bd4f7b61719",
+      "revision": "ff1a055950ba70c308bf27357acf9bd4f7b61719",
+      "reviewed_at": "2026-09-22",
+      "scope": "Verified hggc_runtime.h, device/runtime/driver properties, memory and kernel interfaces against device_query.cpp, vector_add.hg and matrix_mul.hg. Omnismi ships its own workloads, not the vendor samples."
     }
   ]
 }

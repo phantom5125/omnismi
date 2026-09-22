@@ -74,7 +74,8 @@ disables TF32 for compute. The exact probe/version is part of the signature.
 These are portable host-timed synchronized probes, not vendor peak-kernel benchmarks.
 Small buffers may fit in cache; do not compare them to a different memory regime.
 
-The worker checks copy/vector correctness before timing, warms up, and retains
+The worker checks copy/vector correctness before timing, verifies the final timed
+output, warms up, and retains
 2..100 repeated samples with mean, sample standard deviation and coefficient of
 variation. A run produces one measurement with a unique run ID. Distinct live calls
 are needed to build a baseline; inner timing repeats are not independent run IDs.
@@ -101,9 +102,20 @@ reference; `--policy policy.json` supplies classification thresholds. Without a
 policy the ratios can be reported but no pass threshold is invented.
 
 Python: `omnismi.baselines.build_baseline` and `omnismi.probe_runtime.run_probe`.
-NVIDIA/AMD torch and modern torch_mlu are supported runtime boundaries; SAIL active
-compute remains gated until its runtime identity/API is verified. No SDK or torch
-package is installed automatically.
+NVIDIA/AMD torch, modern torch_mlu and native SAIL HGGC are implemented runtime
+boundaries. SAIL requires an explicit SDK-local `omnismi sail-build`; see the
+[PPU guide](alibaba-ppu.md). It captures raw runtime/driver version integers and
+uses a distinct portable tiled FP32 kernel. No SDK or torch package is installed
+automatically. Actual vendor execution still requires target-host verification.
+
+`omnismi bench matmul --vendor VENDOR` directly returns the bounded compute probe
+report. `omnismi bench suite --vendor VENDOR` runs self-test, copy bandwidth, triad
+bandwidth and compute in sequence, sharing one `--timeout` budget (default 90
+seconds). Each step runs in a fresh runtime process and retains its identity,
+correctness checks and raw samples. The suite stops after any non-PASS probe and
+records skipped steps. Its PASS means the workloads executed correctly; it does
+not evaluate expected performance or certify hardware health. Use the contained
+measurements with recorded conditions and `perf-doctor` for baseline comparison.
 
 The included examples are synthetic arithmetic fixtures, never real GPU reference
 values. Publish maintained hardware baselines only after collecting actual repeated

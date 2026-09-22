@@ -63,8 +63,10 @@ allocated buffers/operations only and cannot certify the entire card or prove a
 specific physical unit is faulty. Runtime exceptions are INCONCLUSIVE; observed
 wrong results are FAIL with unconfirmed hardware causality.
 
-NVIDIA/AMD torch and modern torch_mlu are implemented runtime paths. SAIL active
-compute remains gated pending a verified runtime binding/identity contract.
+NVIDIA/AMD torch, modern torch_mlu and native SAIL HGGC are implemented runtime
+paths. PPU self-test uses the separately SDK-compiled probe from
+[the PPU guide](alibaba-ppu.md); its device indexes belong to HGGC. Real target-host
+validation remains required for each vendor.
 
 ## Interpretation boundaries
 

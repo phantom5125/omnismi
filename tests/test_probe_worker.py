@@ -125,3 +125,32 @@ def test_compute_throughput_uses_dense_flops_and_matching_probe_identity(monkeyp
     assert report["measurement"]["unit"] == "FLOP/s"
     assert report["measurement"]["signature"]["byte_convention"] == "dense_2mnk"
     assert report["samples"][0]["flops_per_iteration"] == 2 * 256**3
+
+
+def test_corruption_only_in_timed_workload_cannot_produce_measurement(monkeypatch):
+    fake_torch(monkeypatch)
+    torch = sys.modules["torch"]
+    add = torch.add
+    calls = 0
+
+    def corrupt_after_preflight(a, b, *, out):
+        nonlocal calls
+        calls += 1
+        add(a, b, out=out)
+        if calls > 4:
+            out.values[0] += 1
+
+    torch.add = corrupt_after_preflight
+    report = execute(
+        dict(
+            mode="bandwidth",
+            vendor="nvidia",
+            device=0,
+            memory_mib=1,
+            repeats=2,
+            pattern="triad",
+        )
+    )
+    assert report["status"] == "FAIL"
+    assert report["reason"] == "timed_result_data_mismatch"
+    assert "measurement" not in report

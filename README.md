@@ -10,7 +10,8 @@ NVIDIA GPUs, AMD GPUs, and Google TPUs are supported today, with the Google TPU 
 
 This checkout is the **2.0 development preview**: offline error diagnosis,
 performance comparisons, topology/affinity discovery and an experimental SAIL PPU
-adapter, SDK-compiled Cambricon support, bounded self-tests and live probes.
+adapter, SDK-compiled Cambricon support, native SAIL workloads, bounded self-tests
+and live probes. `bench matmul` and `bench suite` execute bounded workloads.
 See [delivery status](docs/v2/STATUS.md) for feature PRs, commands and
 remaining validation. These additions are not included in the published 1.0.0
 release; the development package version has not yet been bumped.
