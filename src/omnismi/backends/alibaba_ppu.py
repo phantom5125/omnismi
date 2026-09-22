@@ -13,7 +13,9 @@ from typing import Any
 
 from omnismi.backends.base import BaseBackend
 from omnismi.backends.command import query_text
+from omnismi.backends.ppu_telemetry import parse_ppu_query
 from omnismi.errors import BackendError
+from omnismi.identity import normalize_bdf
 from omnismi.models import GPUInfo, GPUMetrics
 
 FIELDS = (
@@ -72,6 +74,7 @@ def parse_ppu_csv(text: str) -> dict[str, dict[str, Any]]:
         address = record["pci.bus_id"].lower()
         if not re.fullmatch(r"[0-9a-f]{4,8}:[0-9a-f]{2}:[0-1][0-9a-f]\.[0-7]", address):
             raise BackendError("PPU PCI identity is missing or malformed")
+        address = normalize_bdf(address)
         key = _text(record["uuid"]) or address
         if key in result or int(record["index"]) in indexes or address in addresses:
             raise BackendError("Duplicate PPU device identity")
@@ -92,7 +95,7 @@ def parse_ppu_csv(text: str) -> dict[str, dict[str, Any]]:
 
 
 class AlibabaPpuBackend(BaseBackend):
-    """Physical PPU snapshots; memory-only metrics until more fields are verified."""
+    """Physical PPU snapshots with optional documented telemetry sections."""
 
     vendor = "alibaba"
 
@@ -102,6 +105,9 @@ class AlibabaPpuBackend(BaseBackend):
         self._next_refresh = 0.0
         self._import_failed = False
         self._lock = threading.Lock()
+        self._telemetry: dict[str, dict[str, Any]] = {}
+        self._telemetry_until = 0.0
+        self._telemetry_error: str | None = None
 
     def _snapshot(self) -> dict[str, dict[str, Any]]:
         with self._lock:
@@ -149,15 +155,34 @@ class AlibabaPpuBackend(BaseBackend):
 
     def metrics(self, device: Any, index: int) -> GPUMetrics:
         data = self._record(device)
+        with self._lock:
+            if time.monotonic() >= self._telemetry_until:
+                self._telemetry = {}
+                try:
+                    executable = shutil.which("ppu-smi")
+                    if executable is None:
+                        raise BackendError("PPU-SMI is unavailable")
+                    self._telemetry = parse_ppu_query(query_text([executable, "-q"]))
+                    self._telemetry_error = None
+                except (OSError, ValueError, BackendError) as exc:
+                    self._telemetry_error = str(exc)
+                self._telemetry_until = time.monotonic() + 0.5
+            telemetry = self._telemetry.get(data["pci_address"], {})
+            if telemetry and (
+                not data["uuid"] or telemetry.get("uuid") != data["uuid"]
+            ):
+                self._telemetry_error = "PPU UUID missing or changed between snapshots"
+                telemetry = {}
+            values = telemetry.get("metrics", {})
         return GPUMetrics(
             index=index,
-            utilization_percent=None,
+            utilization_percent=values.get("utilization_percent"),
             memory_used_bytes=data["memory_used_bytes"],
             memory_total_bytes=data["memory_total_bytes"],
-            temperature_c=None,
-            power_w=None,
-            core_clock_mhz=None,
-            memory_clock_mhz=None,
+            temperature_c=values.get("temperature_c"),
+            power_w=values.get("power_w"),
+            core_clock_mhz=values.get("core_clock_mhz"),
+            memory_clock_mhz=values.get("memory_clock_mhz"),
             timestamp_ns=data["timestamp_ns"],
         )
 
@@ -165,3 +190,5 @@ class AlibabaPpuBackend(BaseBackend):
         with self._lock:
             self._records = {}
             self._next_refresh = 0.0
+            self._telemetry = {}
+            self._telemetry_until = 0.0
