@@ -98,6 +98,7 @@ def build_overview_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="omnismi",
         description="Show a cross-vendor accelerator summary for the current runtime.",
+        epilog="Offline diagnostics: omnismi decode --help; omnismi diagnose --help.",
     )
     _build_common_scope_group(parser)
     parser.add_argument(
@@ -1913,6 +1914,11 @@ def _run_placeholder(command_name: str) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
+
+    if raw_args and raw_args[0] in {"decode", "diagnose"}:
+        from omnismi.diagnostics.cli import run
+
+        return run(raw_args)
 
     if raw_args and raw_args[0] in _SUBCOMMANDS:
         parser = build_root_parser()
