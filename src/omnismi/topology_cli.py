@@ -13,6 +13,7 @@ from omnismi.topology import (
     parse_nvidia_matrix,
     recommend_affinity,
 )
+from omnismi.topology_live import collect_vendor_topology
 
 
 class _Parser(argparse.ArgumentParser):
@@ -37,6 +38,10 @@ def run(argv: list[str]) -> int:
     parser.add_argument(
         "--nvidia-matrix", help="Import a saved nvidia-smi topo -m matrix."
     )
+    parser.add_argument(
+        "--collect-vendor", choices=["nvidia", "alibaba"], action="append", default=[]
+    )
+    parser.add_argument("--timeout", type=float, default=15)
     parser.add_argument("--recommend-affinity", action="store_true")
     parser.add_argument("--device", help="Stable PCI node ID, e.g. pci:0000:41:00.0.")
     try:
@@ -52,6 +57,12 @@ def run(argv: list[str]) -> int:
             or not isinstance(report.get("data"), dict)
         ):
             raise ValueError("Expected a version 1 topology report")
+        if args.input and args.collect_vendor:
+            raise ValueError(
+                "Cannot join a historical graph with live vendor identities"
+            )
+        for vendor in dict.fromkeys(args.collect_vendor):
+            collect_vendor_topology(report, vendor, timeout=args.timeout)
         if args.nvidia_matrix:
             report["data"]["nvidia_matrix"] = parse_nvidia_matrix(
                 _read(args.nvidia_matrix)
