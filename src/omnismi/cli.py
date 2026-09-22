@@ -27,6 +27,7 @@ _BACKEND_NAMES = {
     "NvidiaBackend": "nvml",
     "AmdBackend": "amdsmi",
     "GoogleTpuBackend": "tpumonitoring",
+    "AlibabaPpuBackend": "ppu-smi (HGML)",
 }
 _VISIBLE_STATUS_MATCHED = "MATCHED"
 _VISIBLE_STATUS_MISMATCHED = "MISMATCHED"
@@ -73,7 +74,7 @@ def _build_common_scope_group(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--vendor",
-        choices=["nvidia", "amd", "google"],
+        choices=["nvidia", "amd", "google", "alibaba"],
         help="Restrict output to one vendor.",
     )
 
@@ -98,6 +99,10 @@ def build_overview_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="omnismi",
         description="Show a cross-vendor accelerator summary for the current runtime.",
+        epilog=(
+            "V2 preview commands: omnismi decode --help; omnismi diagnose --help; "
+            "omnismi perf-doctor --help; omnismi topology --help."
+        ),
     )
     _build_common_scope_group(parser)
     parser.add_argument(
@@ -1913,6 +1918,19 @@ def _run_placeholder(command_name: str) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
+
+    if raw_args and raw_args[0] in {"decode", "diagnose"}:
+        from omnismi.diagnostics.cli import run
+
+        return run(raw_args)
+    if raw_args and raw_args[0] == "perf-doctor":
+        from omnismi.perf_cli import run
+
+        return run(raw_args[1:])
+    if raw_args and raw_args[0] == "topology":
+        from omnismi.topology_cli import run
+
+        return run(raw_args[1:])
 
     if raw_args and raw_args[0] in _SUBCOMMANDS:
         parser = build_root_parser()

@@ -1,7 +1,10 @@
 # Omnismi 2.0 implementation plan
 
-Status: design and branch bootstrap, 2026-09-22. The commands below are proposed,
-not shipped capabilities. No new backend has been validated on hardware.
+Status: initial diagnostics, performance comparison, topology and SAIL PPU
+implementations are combined on `codex/v2-preview`, 2026-09-22. Independent draft
+PRs remain open against `codex/v2-integration`; see [delivery status](STATUS.md)
+for exact scope, validation and remaining work. Cambricon is interface research
+only. No new backend has been validated on hardware.
 
 ## Goal
 

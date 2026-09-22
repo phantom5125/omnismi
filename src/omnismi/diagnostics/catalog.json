@@ -1,0 +1,511 @@
+{
+  "schema_version": 1,
+  "catalog_revision": "2026.09.22.1",
+  "coverage": "curated_subset",
+  "sources": [
+    {
+      "id": "nvidia-xid-r555",
+      "url": "https://docs.nvidia.com/deploy/xid-errors/archive/index.html",
+      "revision": "r555",
+      "section": "4. Common Xid Errors",
+      "reviewed_at": "2026-09-22"
+    },
+    {
+      "id": "nvidia-triage",
+      "url": "https://docs.nvidia.com/deploy/gpu-debug-guidelines/gpu-node-triage.html",
+      "revision": "web snapshot reviewed 2026-09-22",
+      "section": "GPU Node Triage",
+      "reviewed_at": "2026-09-22"
+    },
+    {
+      "id": "amdgpu-ras",
+      "url": "https://docs.kernel.org/gpu/amdgpu/ras.html",
+      "revision": "web snapshot reviewed 2026-09-22",
+      "section": "RAS Error Count sysfs Interface",
+      "reviewed_at": "2026-09-22"
+    },
+    {
+      "id": "pcie-aer",
+      "url": "https://docs.kernel.org/PCI/pcieaer-howto.html",
+      "revision": "web snapshot reviewed 2026-09-22",
+      "section": "8.2.3 and 8.3",
+      "reviewed_at": "2026-09-22"
+    }
+  ],
+  "actions": {
+    "capture_driver_and_device_identity": "Record model, driver, device identity and workload context.",
+    "correlate_same_device_logs": "Review nearby events for this exact device and boot.",
+    "inspect_application_failure": "Review the failing workload with an appropriate application debugger.",
+    "consider_vendor_diagnostics": "Use vendor diagnostics under a separately approved workload plan.",
+    "inspect_ecc_and_recovery_state": "Read ECC counters and retirement/remapping state, preserving scope and timestamps.",
+    "consult_vendor_recovery_guidance": "Consult the linked device-specific recovery procedure before taking any action.",
+    "inspect_link_and_peer_state": "Collect link telemetry and peer-device evidence.",
+    "inspect_pcie_events": "Collect PCIe/AER evidence and identify the reporting device.",
+    "consult_vendor_support": "Provide the captured evidence to the hardware support organization.",
+    "compare_same_scope_counter_snapshots": "Compare timestamped snapshots; handle reset or wrap before calculating deltas.",
+    "inspect_reported_ras_block": "Verify the reported block and its supported RAS capabilities.",
+    "map_reporting_device_to_topology": "Identify the port/endpoint relationship before attributing a component failure."
+  },
+  "rules": [
+    {
+      "id": "nvidia.xid.13",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "13",
+      "title": "Compute exception",
+      "summary": "Compute execution fault; application, driver or hardware may be involved.",
+      "affected_units": [
+        "compute"
+      ],
+      "severity": "warning",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_application_failure",
+        "consider_vendor_diagnostics"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.31",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "31",
+      "title": "Address translation fault",
+      "summary": "Invalid GPU memory access; investigate application addressing as well as driver and hardware.",
+      "affected_units": [
+        "memory_addressing"
+      ],
+      "severity": "warning",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_application_failure",
+        "consider_vendor_diagnostics"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.43",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "43",
+      "title": "Application channel fault",
+      "summary": "A software-triggered application fault does not itself establish a defective GPU.",
+      "affected_units": [
+        "compute"
+      ],
+      "severity": "warning",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_application_failure",
+        "consider_vendor_diagnostics"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.48",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "48",
+      "title": "Uncorrectable ECC event",
+      "summary": "An uncorrectable GPU ECC error was reported; the code alone does not identify a physical bank.",
+      "affected_units": [
+        "memory"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_ecc_and_recovery_state",
+        "consult_vendor_recovery_guidance"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.63",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "63",
+      "title": "Memory recovery record",
+      "summary": "Page retirement or row remapping was recorded; behavior depends on architecture.",
+      "affected_units": [
+        "memory"
+      ],
+      "severity": "warning",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_ecc_and_recovery_state",
+        "consult_vendor_recovery_guidance"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.64",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "64",
+      "title": "Memory recovery record failure",
+      "summary": "Recording page retirement or row remapping failed.",
+      "affected_units": [
+        "memory"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_ecc_and_recovery_state",
+        "consult_vendor_recovery_guidance"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.74",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "74",
+      "title": "NVLink connection fault",
+      "summary": "The link or its remote peer may explain this event.",
+      "affected_units": [
+        "interconnect"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_link_and_peer_state",
+        "consult_vendor_recovery_guidance"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.79",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "79",
+      "title": "PCIe device unreachable",
+      "summary": "The driver could no longer reach the GPU through PCIe.",
+      "affected_units": [
+        "pcie"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_pcie_events",
+        "consult_vendor_support"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "see architecture-specific vendor guidance",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.94",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "94",
+      "title": "Contained error",
+      "summary": "Error containment limited the affected application scope on supporting devices.",
+      "affected_units": [
+        "memory"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_ecc_and_recovery_state",
+        "consult_vendor_recovery_guidance"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "error-containment-capable devices",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "nvidia.xid.95",
+      "revision": 1,
+      "vendor": "nvidia",
+      "namespace": "xid",
+      "code": "95",
+      "title": "Uncontained error",
+      "summary": "Containment did not protect other applications on supporting devices.",
+      "affected_units": [
+        "memory"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "nvidia-xid-r555",
+        "nvidia-triage"
+      ],
+      "next_checks": [
+        "capture_driver_and_device_identity",
+        "correlate_same_device_logs",
+        "inspect_ecc_and_recovery_state",
+        "consult_vendor_recovery_guidance"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "error-containment-capable devices",
+        "limitations": [
+          "No subcode decoding or automated recovery policy.",
+          "Device model and driver-specific behavior are not validated by this rule."
+        ]
+      }
+    },
+    {
+      "id": "amd.ras.ce",
+      "revision": 1,
+      "vendor": "amd",
+      "namespace": "ras",
+      "code": "ce",
+      "title": "RAS CE counter",
+      "summary": "The block reports corrected errors; this is a counter snapshot, not a rate.",
+      "affected_units": [
+        "reported_ras_block"
+      ],
+      "severity": "warning",
+      "source_ids": [
+        "amdgpu-ras"
+      ],
+      "next_checks": [
+        "compare_same_scope_counter_snapshots",
+        "inspect_reported_ras_block"
+      ],
+      "applicability": {
+        "level": "counter_semantics_only",
+        "driver_range": null,
+        "architecture": "AMDGPU RAS-enabled block",
+        "limitations": [
+          "Block support and counter reset lifetime vary by device/driver."
+        ]
+      }
+    },
+    {
+      "id": "amd.ras.ue",
+      "revision": 1,
+      "vendor": "amd",
+      "namespace": "ras",
+      "code": "ue",
+      "title": "RAS UE counter",
+      "summary": "The block reports uncorrected errors; snapshot counts do not establish when they occurred.",
+      "affected_units": [
+        "reported_ras_block"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "amdgpu-ras"
+      ],
+      "next_checks": [
+        "compare_same_scope_counter_snapshots",
+        "inspect_reported_ras_block"
+      ],
+      "applicability": {
+        "level": "counter_semantics_only",
+        "driver_range": null,
+        "architecture": "AMDGPU RAS-enabled block",
+        "limitations": [
+          "Block support and counter reset lifetime vary by device/driver."
+        ]
+      }
+    },
+    {
+      "id": "pci.aer.corrected",
+      "revision": 1,
+      "vendor": "pci",
+      "namespace": "aer",
+      "code": "corrected",
+      "title": "PCIe AER corrected",
+      "summary": "PCIe corrected an interface error.",
+      "affected_units": [
+        "pcie"
+      ],
+      "severity": "warning",
+      "source_ids": [
+        "pcie-aer"
+      ],
+      "next_checks": [
+        "inspect_pcie_events",
+        "map_reporting_device_to_topology"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "PCIe AER",
+        "limitations": [
+          "Reporting port identity is not proof of a faulty endpoint."
+        ]
+      }
+    },
+    {
+      "id": "pci.aer.nonfatal",
+      "revision": 1,
+      "vendor": "pci",
+      "namespace": "aer",
+      "code": "nonfatal",
+      "title": "PCIe AER nonfatal",
+      "summary": "A PCIe transaction was affected without declaring the link unusable.",
+      "affected_units": [
+        "pcie"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "pcie-aer"
+      ],
+      "next_checks": [
+        "inspect_pcie_events",
+        "map_reporting_device_to_topology"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "PCIe AER",
+        "limitations": [
+          "Reporting port identity is not proof of a faulty endpoint."
+        ]
+      }
+    },
+    {
+      "id": "pci.aer.fatal",
+      "revision": 1,
+      "vendor": "pci",
+      "namespace": "aer",
+      "code": "fatal",
+      "title": "PCIe AER fatal",
+      "summary": "PCIe reported a failure affecting link reliability.",
+      "affected_units": [
+        "pcie"
+      ],
+      "severity": "critical",
+      "source_ids": [
+        "pcie-aer"
+      ],
+      "next_checks": [
+        "inspect_pcie_events",
+        "map_reporting_device_to_topology"
+      ],
+      "applicability": {
+        "level": "generic_meaning_only",
+        "driver_range": null,
+        "architecture": "PCIe AER",
+        "limitations": [
+          "Reporting port identity is not proof of a faulty endpoint."
+        ]
+      }
+    }
+  ]
+}

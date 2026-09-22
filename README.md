@@ -8,6 +8,12 @@ Cross-vendor accelerator observability for AI agents and Python scripts.
 Omnismi provides a compact and stable Python API for reading accelerator information and metrics across vendors.
 NVIDIA GPUs, AMD GPUs, and Google TPUs are supported today, with the Google TPU path marked experimental.
 
+This checkout is the **2.0 development preview**: offline error diagnosis,
+performance comparisons, topology/affinity discovery and an experimental SAIL PPU
+adapter. See [delivery status](docs/v2/STATUS.md) for feature PRs, commands and
+remaining validation. These additions are not included in the published 1.0.0
+release; the development package version has not yet been bumped.
+
 ## Quick Start
 
 ```python
@@ -74,6 +80,21 @@ Run the same CLI through the module entrypoint if needed:
 ```bash
 python -m omnismi
 ```
+
+### 2.0 development: offline diagnosis
+
+On the `codex/v2-diagnostics` development branch, agents can interpret reviewed
+NVIDIA Xid, AMD RAS counter and PCIe AER evidence without an LLM or network call:
+
+```bash
+omnismi decode --vendor nvidia --namespace xid --code 48
+omnismi diagnose --input kernel.log
+```
+
+These commands return JSON with evidence, sources, applicability limits and next
+checks. Findings describe recorded events; they do not confirm a faulty physical
+unit or certify current health. See [coverage and examples](docs/v2/diagnostics.md).
+This is development functionality, not a released 2.0 package.
 
 ## Install
 

@@ -58,6 +58,20 @@
       "title": "T-Head SAIL SDK developer center",
       "url": "https://developer.t-head.cn/",
       "scope": "User-selected primary PPU source; official search index identifies SAIL SDK, KMD ECC/XID references and interconnect docs. Specific management API signatures not yet retrieved."
+    },
+    {
+      "id": "nvidia-xid-r555",
+      "publisher": "NVIDIA",
+      "title": "Xid Errors r555 archive",
+      "url": "https://docs.nvidia.com/deploy/xid-errors/archive/index.html",
+      "scope": "Pinned revision for initial common-code summaries; no subcode or driver-specific recovery automation"
+    },
+    {
+      "id": "pcie-aer",
+      "publisher": "Linux kernel project",
+      "title": "PCI Express Advanced Error Reporting Driver Guide",
+      "url": "https://docs.kernel.org/PCI/pcieaer-howto.html",
+      "scope": "AER severity semantics and reporting-device identity"
     }
   ]
 }
