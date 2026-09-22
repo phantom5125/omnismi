@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "metric": "memory_bandwidth",
+  "unit": "bytes/s",
+  "signature": {
+    "vendor": "test",
+    "sku": "synthetic",
+    "form_factor": "pcie",
+    "partition": "whole",
+    "memory_mode": "ecc",
+    "probe": "bandwidth",
+    "probe_version": "1",
+    "pattern": "copy",
+    "dtype": "fp32",
+    "buffer_bytes": 268435456,
+    "byte_convention": "read_plus_write",
+    "runtime": "torch",
+    "runtime_version": "test",
+    "driver_version": "test",
+    "device_count": 1,
+    "power_limit_w": 300,
+    "clock_policy": "default"
+  },
+  "value": 800,
+  "source": {
+    "id": "synthetic",
+    "description": "Test arithmetic, not hardware data"
+  }
+}
