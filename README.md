@@ -4,250 +4,123 @@
   <img src="docs/assets/OMNIsmi.svg" alt="Omnismi logo" width="320" />
 </p>
 
-Cross-vendor accelerator observability for AI agents and Python scripts.
-Omnismi provides a compact and stable Python API for reading accelerator information and metrics across vendors.
-NVIDIA GPUs, AMD GPUs, and Google TPUs are supported today, with the Google TPU path marked experimental.
+[![Preview CI](https://github.com/phantom5125/omnismi/actions/workflows/v2-checks.yml/badge.svg?branch=codex%2Fv2-runtime-completion&event=push)](https://github.com/phantom5125/omnismi/actions/workflows/v2-checks.yml?query=branch%3Acodex%2Fv2-runtime-completion)
+[![PyPI release](https://img.shields.io/pypi/v/omnismi?label=PyPI%20release)](https://pypi.org/project/omnismi/)
+[![Python](https://img.shields.io/badge/Python-%3E%3D3.9-blue)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![2.0 preview](https://img.shields.io/badge/2.0-development%20preview-orange)](docs/v2/STATUS.md)
 
-This checkout is the **2.0 development preview**: offline error diagnosis,
-performance comparisons, topology/affinity discovery and an experimental SAIL PPU
-adapter. See [delivery status](docs/v2/STATUS.md) for feature PRs, commands and
-remaining validation. These additions are not included in the published 1.0.0
-release; the development package version has not yet been bumped.
+Cross-vendor accelerator observability and structured diagnostics for Python apps
+and AI agents. Read normalized metrics, explain error evidence offline, compare
+performance with recorded baselines, and discover topology and affinity.
 
-## Quick Start
+**Start here:** [Quickstart](docs/quickstart.md) · [中文上手指南](docs/quickstart.zh-CN.md) ·
+[Hardware compatibility](docs/compatibility.md) · [2.0 delivery status](docs/v2/STATUS.md)
+
+## Choose the version
+
+| Goal | Install | Available workflows |
+|---|---|---|
+| Released Python API | `python -m pip install omnismi` | The PyPI 1.0.0 API; add `nvidia` or `amd` extras for telemetry |
+| Try the 2.0 work in this repository | Clone the preview branch below and install `.` | CLI, offline diagnosis, perf-doctor, topology, PPU and Cambricon adapters |
+
+The PyPI badge describes the released package. Preview CI describes the explicit
+`codex/v2-runtime-completion` branch. The preview has **not** been published as 2.0;
+its package version is still 1.0.0. A PyPI install does not contain these new commands.
+
+## First result without a GPU
+
+On Linux or macOS with Git and Python 3.9+:
+
+```bash
+git clone --branch codex/v2-runtime-completion --single-branch https://github.com/phantom5125/omnismi.git
+cd omnismi
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install .
+```
+
+Already in this checkout? Create/activate the virtual environment and install `.`;
+skip the clone. Core has no mandatory vendor dependency. Python 3.12 is a tested
+starting point; hardware collection and SDK builds target Linux.
+
+<!-- quickstart-smoke: decode -->
+```bash
+python -m omnismi decode --vendor nvidia --namespace xid --code 48
+```
+
+Expected: JSON with `"status":"FAIL"` and source-backed findings for the supplied
+error; exit code **2**. This is a successful interpretation of error evidence,
+not a crash or proof that the current machine has faulty hardware. No GPU, driver,
+LLM or runtime network access is needed. See the [quickstart](docs/quickstart.md)
+for sample logs, an 80% performance comparison and exit-code handling.
+
+## Read a real device
+
+From the preview checkout, choose the dependency for the hardware you already have:
+
+| Hardware | Setup | Read-only query |
+|---|---|---|
+| NVIDIA | `python -m pip install '.[nvidia]'`; working driver | `omnismi --vendor nvidia -o json` |
+| AMD | `python -m pip install '.[amd]'`; matching ROCm/SMI stack | `omnismi --vendor amd -o json` |
+| Google TPU | `python -m pip install '.[tpu]'` on a TPU VM | `omnismi --vendor google -o json` |
+| Alibaba PPU | SAIL SDK with `ppu-smi` on PATH; [setup](docs/v2/alibaba-ppu.md) | `omnismi --vendor alibaba -o json` |
+| Cambricon MLU | Build the collector against installed CNDEV; [setup](docs/v2/cambricon.md) | `omnismi --vendor cambricon -o json` |
+
+Omnismi does not install drivers, SDKs or PyTorch. `.[all]` includes NVIDIA, AMD and
+TPU Python dependencies; PPU/MLU still require their vendor setup. Missing devices
+or permissions are explained by `omnismi doctor`; unavailable metrics stay null.
+
+The small Python API works in both the released package and this preview:
 
 ```python
 import omnismi as omi
 
-# 1) Count GPUs
-gpu_count = omi.count()
-
-# 2) Check whether GPU exists
-has_gpu = gpu_count > 0
-
-# 3) Get max total GPU memory (bytes) across visible devices
-max_memory_bytes = max(
-    (dev.info().memory_total_bytes or 0 for dev in omi.gpus()),
-    default=0,
-)
-
-print(f"gpu_count={gpu_count}")
-print(f"has_gpu={has_gpu}")
-print(f"max_memory_bytes={max_memory_bytes}")
+print(omi.count())
+for device in omi.gpus():
+    print(device.info())
+    print(device.metrics())
 ```
 
-## CLI Quick Start
+Units are bytes, percent, Celsius, Watts and MHz. See [API](docs/api.md) for
+`gpu(index)`, caching and `GPU.realtime()`.
 
-Inspect the current runtime with the human-friendly main entry:
+## Pick a workflow
 
-```bash
-omnismi
-```
-
-Show a wider machine summary:
-
-```bash
-omnismi --wide
-```
-
-Explain visibility mismatches or partial metrics:
-
-```bash
-omnismi doctor
-```
-
-Compare visible devices against a curated hardware profile:
-
-```bash
-omnismi validate-spec --profile h100-pcie-80gb
-```
-
-Run the first portable bandwidth sanity probe:
-
-```bash
-omnismi bench bandwidth
-```
-
-Emit machine-readable output for agents or automation:
-
-```bash
-omnismi -o json
-omnismi -o yaml
-```
-
-Run the same CLI through the module entrypoint if needed:
-
-```bash
-python -m omnismi
-```
-
-### 2.0 development: offline diagnosis
-
-On the `codex/v2-diagnostics` development branch, agents can interpret reviewed
-NVIDIA Xid, AMD RAS counter and PCIe AER evidence without an LLM or network call:
-
-```bash
-omnismi decode --vendor nvidia --namespace xid --code 48
-omnismi diagnose --input kernel.log
-```
-
-These commands return JSON with evidence, sources, applicability limits and next
-checks. Findings describe recorded events; they do not confirm a faulty physical
-unit or certify current health. See [coverage and examples](docs/v2/diagnostics.md).
-This is development functionality, not a released 2.0 package.
-
-## Install
-
-Omnismi core is lightweight and has no mandatory vendor dependency.
-Pick the install command that matches your environment:
-
-| Your environment | What to install | Command |
+| Need | Command | Guide |
 |---|---|---|
-| No GPU / CI / just developing API integration | Core package only | `pip install omnismi` |
-| NVIDIA GPUs only | Core + NVIDIA backend dependency | `pip install "omnismi[nvidia]"` |
-| AMD GPUs only | Core + AMD backend dependency | `pip install "omnismi[amd]"` |
-| Google TPU VM | Core + TPU backend dependency | `pip install "omnismi[tpu]"` |
-| Mixed cluster or shared image | Core + NVIDIA + AMD + TPU dependencies | `pip install "omnismi[all]"` |
+| Explain a recorded error | `omnismi decode --vendor nvidia --namespace xid --code 48` | [Diagnostics](docs/v2/diagnostics.md) |
+| Inspect current evidence | `omnismi diagnose --collect hardware` | [Collection and self-test](docs/v2/diagnostics.md) |
+| Discover locality | `omnismi topology --collect-vendor nvidia` | [Topology and affinity](docs/v2/topology-affinity.md) |
+| Compare with a baseline | `omnismi perf-doctor --input run.json --baseline baseline.json` | [Performance](docs/v2/perf-doctor.md) |
+| Explicitly execute bounded checks | `omnismi bench suite --vendor nvidia --device 0 --memory-mib 64 --timeout 90` | [Bench](docs/bench.md) |
 
-### Install From Local Source
+The suite allocates accelerator memory and runs workloads; use it only when you
+intend to test the selected runtime device. It requires a compatible compute
+runtime. A passing self-test covers the executed checks, not whole-device health.
 
-```bash
-# from repo root
-python -m pip install -e ".[all]"
-```
+## Validation status
 
-If you only need one vendor backend during local development:
+| Adapter | Evidence |
+|---|---|
+| NVIDIA / AMD | Existing H20 / MI300X telemetry validation; new 2.0 paths still need target-host evidence |
+| Google TPU | Experimental; user validation needed |
+| Alibaba PPU / Cambricon MLU | Implemented, with fixture and synthetic native-runtime tests; real SDK/card validation pending |
 
-```bash
-python -m pip install -e ".[nvidia]"
-# or
-python -m pip install -e ".[amd]"
-# or
-python -m pip install -e ".[tpu]"
-```
+CI checks Python regressions, native protocol stand-ins, built-wheel installation,
+quickstart commands, package metadata and documentation. A green badge is software
+validation, not accelerator certification. Full evidence is in the
+[compatibility matrix](docs/compatibility.md) and [delivery status](docs/v2/STATUS.md).
 
-## Why Omnismi
-
-- Unified API across vendors: `count`, `gpus`, `gpu`, `info`, `metrics`.
-- Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
-- Graceful degradation: unavailable metrics return `None` instead of raising by default.
-- NVIDIA and AMD both support psutil-style cached sampling plus `GPU.realtime()` for forced live reads.
-- Google TPU support uses the TPU Monitoring Library through `libtpu.sdk.tpumonitoring`.
-- Built-in parity checker to compare normalized output with direct vendor readings.
-
-## Why not just torch/pynvml/amdsmi?
-
-PyTorch memory APIs are useful in framework workflows, but are framework-scoped and not designed as a
-cross-vendor observability contract for general runtime checks. Direct vendor bindings are essential,
-but each has different lifecycle, naming, and compatibility details. Omnismi adds a stable cross-vendor
-contract for agent preflight and application telemetry. See [docs/why-omnismi.md](docs/why-omnismi.md).
-
-## Adapter Matrix (Ground Truth Libraries)
-
-| Vendor | Runtime/Driver Stack | Ground Truth Library | Router Status |
-|---|---|---|---|
-| NVIDIA | CUDA + NVML | `nvidia-ml-py` | ✅ Supported |
-| AMD | ROCm + AMD SMI | `amdsmi` | ✅ Supported |
-| Google TPU | Cloud TPU VM + LibTPU SDK | `libtpu.sdk.tpumonitoring` | 🟡 Experimental |
-| Intel | oneAPI + Level Zero | TBD | ⬜ Planned |
-| Apple | Metal | TBD | ⬜ Planned |
-
-Status legend:
-- `✅ Supported`: Adapter path is integrated and maintained.
-- `🟡 Partial`: Adapter is integrated but some metrics/features are incomplete.
-- `🧪 Awaiting User Validation`: Adapter path exists; model/version evidence is still needed.
-- `⬜ Planned`: Vendor adapter is not integrated yet.
-
-## Hardware Validation Status
-
-| Vendor | Model | Status | Evidence |
-|---|---|---|---|
-| NVIDIA | H20 | ✅ Verified | [v1.0.0 release note](CHANGELOG.md#100---2026-02-25) |
-| AMD | MI300X | ✅ Verified | [v1.0.0 release note](CHANGELOG.md#100---2026-02-25) |
-| Google TPU | Cloud TPU | 🧪 Awaiting User Validation | - |
-
-See full matrix in [docs/compatibility.md](docs/compatibility.md).
-
-## API
-
-- `omi.count() -> int`
-- `omi.gpus() -> list[GPU]`
-- `omi.gpu(index: int) -> GPU | None`
-- `GPU.info() -> GPUInfo`
-- `GPU.metrics() -> GPUMetrics`
-- `GPU.realtime() -> context manager` (force live reads when backend supports it)
-
-Google TPU support currently reuses the existing `gpus()` / `GPUInfo` / `GPUMetrics` surface for API
-compatibility even though the underlying accelerator is not a GPU.
-
-## Current Support and Semantics
-
-| Vendor | Status | Backend dependency | Read semantics |
-|---|---|---|---|
-| NVIDIA | Supported | `nvidia-ml-py` | Read-only, normalized units, cached by default, `GPU.realtime()` available |
-| AMD | Supported | `amdsmi` | Read-only, normalized units, cached by default, `GPU.realtime()` available |
-| Google TPU | Experimental | `libtpu` | Read-only snapshot metrics from TPU Monitoring Library; no Omnismi parity collector yet |
-| Other vendors (Intel, Apple, etc.) | Planned | TBD | Same API contract (`count/gpus/gpu`, `info/metrics`) |
-
-| Metric field | Unit | Semantic |
-|---|---|---|
-| `utilization_percent` | `%` | Vendor-reported primary compute/graphics engine activity percentage when available |
-| `memory_used_bytes` / `memory_total_bytes` | `bytes` | Memory usage/total in bytes |
-| `temperature_c` | `C` | Device temperature in Celsius |
-| `power_w` | `W` | Power usage in Watts |
-| `core_clock_mhz` / `memory_clock_mhz` | `MHz` | Core/memory clock when available |
-
-`utilization_percent` is intentionally a cross-vendor activity signal. It is not an SM occupancy field on
-NVIDIA or a CU occupancy field on AMD. Today Omnismi maps it to the closest top-level vendor activity metric
-available, which is NVML `gpu` utilization for NVIDIA and `gfx_activity` / `gpu_util` for AMD.
-
-### Sampling Semantics (NVIDIA and AMD)
-
-- Omnismi initializes vendor libraries lazily on first backend use.
-- `GPU.metrics()` is psutil-style for both NVIDIA and AMD: repeated calls return the latest cached sample instead of forcing a direct vendor read every time.
-- A background sampler refreshes cached metrics periodically (default 0.5s interval).
-- `GPU.realtime()` bypasses the cache and forces direct reads when the backend supports realtime mode. NVIDIA and AMD both implement it.
-- On process exit or backend teardown, Omnismi stops the sampler and closes the vendor library.
-
-Use realtime mode only when you explicitly need per-call direct reads:
-
-```python
-import omnismi as omi
-
-dev = omi.gpu(0)
-if dev is not None:
-    with dev.realtime():
-        live = dev.metrics()  # bypass cache for this call path
-```
-
-## Roadmap (Todo)
-
-- Extend backend coverage to more accelerator vendors.
-- Improve compatibility matrix depth across drivers/runtimes/architectures.
-- Strengthen parity validation workflow and reporting, including non-GPU backends.
-- Expand hardware-backed tests and reproducibility tooling.
-- Keep API minimal while improving metric quality and consistency.
-
-## Documentation
-
-- API and usage docs: `docs/`
-- Build docs locally: `mkdocs serve`
-- GPU parity validation: `python -m omnismi.validation.parity --vendor nvidia --samples 3`
-- CLI design and current discovery command: `docs/cli.md`
-
-## Local Validation
+## Development
 
 ```bash
-# run unit tests
-PYTHONPATH=src pytest -q
-
-# compare normalized GPU output against direct vendor API
-PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3
-PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3
+python -m pip install -e '.[dev,docs]' build twine
+python -m pytest -q
+python -m mkdocs build --strict
+python -m build
+python -m twine check dist/*
 ```
 
-Google TPU support currently exposes local snapshot metrics only. A direct parity command for TPU is not yet available.
-
-## License
-
-MIT
+See [Contributing](CONTRIBUTING.md) for installed-wheel checks and hardware evidence,
+[Why Omnismi](docs/why-omnismi.md) for the design, and [MIT license](LICENSE).

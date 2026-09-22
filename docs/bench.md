@@ -1,454 +1,94 @@
 # Bench
 
-`omnismi bench` is the CLI surface for portable accelerator sanity checks.
-Today the first `bandwidth` probe is implemented; `matmul` and `suite` remain
-planned. This page describes both the current behavior and the intended longer-
-term command layout.
+The 2.0 preview implements `bench bandwidth`, `bench matmul` and `bench suite`.
+Install the preview using the [quickstart](quickstart.md). These commands execute
+accelerator workloads; management queries alone do not start them.
 
-## Goals
-
-- Keep Omnismi core focused on discovery and normalized observability.
-- Add portable, non-vendor benchmark probes that are easy to automate.
-- Make default output readable for humans while keeping `json` and `yaml`
-  outputs stable for agents and CI.
-- Compare measured results against curated hardware profiles without turning
-  Omnismi into a full profiler.
-
-## Non-goals
-
-- Replacing vendor profilers or deep performance-analysis suites
-- Predicting model runtime from a full graph-analysis pipeline
-- Chasing every vendor-specific benchmark mode in the core package
-
-## Command layout
-
-The initial CLI is expected to center on three subcommands:
+## Bounded matrix probe
 
 ```bash
-omnismi bench bandwidth [flags]
-omnismi bench matmul [flags]
-omnismi bench suite [flags]
+omnismi bench matmul --vendor nvidia --device 0 --memory-mib 64 --repeats 5 --timeout 30
 ```
 
-### `omnismi bench bandwidth`
+Required vendor: `nvidia`, `amd`, `alibaba` or `cambricon`. The device index belongs
+to the selected compute runtime. The command checks copy/vector correctness, then
+measures synchronized dense FP32 matrix multiplication, retains raw samples and
+checks the final result. Dimensions derive from the memory budget and are capped
+at 2048. Output is an `active_probe` JSON report, with FLOP/s using `2*N^3`.
 
-Run a portable memory-bandwidth probe on one or more visible devices.
+NVIDIA/AMD use a matching torch runtime; MLU uses torch_mlu; PPU uses the
+[SDK-compiled SAIL probe](v2/alibaba-ppu.md). NVIDIA torch disables TF32 and requests
+highest FP32 precision. The SAIL path uses Omnismi's portable tiled kernel, not a
+vendor BLAS/tensor-core peak benchmark.
 
-Current implementation notes:
-
-- implemented with a portable `torch` runtime for NVIDIA and AMD devices when
-  PyTorch can see the selected device
-- uses Omnismi discovery scope first, so host/container/runtime-visible device
-  filtering is preserved automatically
-- emits a stable `BenchReport` in `table`, `json`, and `yaml`
-- currently reports raw bandwidth evidence first and leaves verdicts
-  `INCONCLUSIVE` until curated sustained-bandwidth thresholds are added to the
-  profile registry
-
-Expected use cases:
-
-- verify that a rented machine is in the right bandwidth class
-- detect throttling, power caps, or degraded runtime state
-- compare repeated runs over time on the same node
-
-Probe-specific flags:
-
-- `--pattern copy|triad`
-- `--dtype fp32|fp16|bf16`
-- `--buffer-bytes BYTES`
-- `--iterations N`
-
-Notes:
-
-- `copy` should be the simplest and most stable baseline.
-- `triad` is useful as a more stressful STREAM-like pattern when supported.
-- Output should report sustained device-local bandwidth, not a vendor-marketing peak.
-
-### `omnismi bench matmul`
-
-Run a portable GEMM or batched-GEMM throughput probe.
-
-Current status: planned.
-
-Expected use cases:
-
-- sanity-check compute throughput by datatype
-- confirm that tensor-core or matrix-core class execution is behaving as expected
-- compare runtime-stack changes on the same hardware
-
-Probe-specific flags:
-
-- `--m INT`
-- `--n INT`
-- `--k INT`
-- `--batch INT`
-- `--dtype fp32|fp16|bf16|int8`
-- `--iterations N`
-- `--preset smoke|standard|saturating`
-
-Notes:
-
-- `--preset` should be the common entrypoint; explicit `m/n/k` flags override it.
-- The benchmark should report achieved FLOP/s, not just wall time.
-- When Omnismi can estimate arithmetic intensity for the chosen case, it should include that as a derived metric.
-
-### `omnismi bench suite`
-
-Run a curated set of benchmark cases and emit one consolidated report.
-
-Current status: planned.
-
-Expected use cases:
-
-- one-shot acceptance test for a node or machine image
-- attachable evidence for procurement, incident reports, or CI
-- cluster bring-up and regression checks
-
-Probe-specific flags:
-
-- `--preset smoke|standard|extended`
-- `--include bandwidth,matmul`
-- `--profile NAME`
-- `--fail-on warn|fail`
-
-Notes:
-
-- `suite` should reuse the same result schema as the individual probes.
-- The suite command is where profile comparison becomes most useful.
-
-## Common flags
-
-These flags should be shared across `bandwidth`, `matmul`, and `suite` where relevant:
-
-- `--device INDEX`
-- `--all-devices`
-- `--vendor nvidia|amd|google`
-- `--profile NAME`
-- `--runtime auto|torch`
-- `--warmup-seconds FLOAT`
-- `--duration-seconds FLOAT`
-- `--repeats INT`
-- `-o, --output table|json|yaml`
-- `--quiet`
-- `--color auto|always|never`
-- `--no-color`
-- `--include-samples`
-- `--warn-below-ratio FLOAT`
-- `--fail-below-ratio FLOAT`
-
-Command rules:
-
-- `table` is the default output format for interactive use.
-- `json` and `yaml` serialize the same underlying report object.
-- `--device` may be repeated.
-- `--all-devices` and `--device` are mutually exclusive.
-- `--profile` is optional; without it, benchmark results may still be valid but verdicts may become `INCONCLUSIVE`.
-- Device scoping should follow the same host/container/runtime visibility rules as [`omnismi`](cli.md).
-
-For the current `bandwidth` implementation:
-
-- `--runtime auto|torch`, `--warmup-seconds`, `--duration-seconds`, `--repeats`,
-  `--include-samples`, and the bandwidth-specific probe flags are implemented
-- `--quiet`, `--warn-below-ratio`, and `--fail-below-ratio` remain planned
-
-## Output formats
-
-Omnismi should treat structured output as a first-class feature.
-
-Recommended format behavior:
-
-- `-o table`: human-oriented summary, color only on TTYs
-- `-o json`: machine-oriented canonical serialization
-- `-o yaml`: same object model as JSON, rendered as YAML for readability
-
-Design notes:
-
-- The schema should be versioned with `apiVersion`.
-- New fields should be additive so agents can ignore unknown keys safely.
-- Numeric benchmark metrics should use canonical base units in the structured schema:
-  - bytes
-  - bytes per second
-  - flops per second
-  - seconds
-- Humanized units such as `GiB/s` or `TFLOP/s` belong in the `table` renderer, not as the primary schema contract.
-- Shell redirection should be enough to save results:
+## Bounded suite
 
 ```bash
-omnismi bench suite --profile h100-pcie-80gb -o yaml > bench.yaml
-omnismi bench matmul --preset standard -o json > matmul.json
+omnismi bench suite --vendor nvidia --device 0 --memory-mib 64 --repeats 5 --timeout 90
 ```
 
-Current implemented examples:
+The suite runs four probes sequentially: self-test, copy bandwidth, triad bandwidth
+and matrix throughput. Each runs in an isolated process and retains its own
+identity, checks and samples. All steps share one wall-time budget. A non-PASS
+probe stops the sequence; remaining steps appear in `data.skipped` with reasons.
+
+Both `matmul` and `suite` accept these options:
+
+| Option | Meaning |
+|---|---|
+| `--vendor` | Required compute-runtime vendor |
+| `--device` | Runtime-local index, default 0 |
+| `--memory-mib` | Total primary device-buffer budget, 1–4096 MiB, default 64 |
+| `--repeats` | 2–100 timing samples, default 5 |
+| `--timeout` | Whole-command deadline, greater than 0 and at most 600 seconds; default 30 for matmul, 90 for suite |
+
+Runtime context, allocator caches and library workspace are outside the primary
+buffer budget. These commands emit JSON directly and do not take legacy
+`--profile`, `--preset`, `--dtype` or `-o` flags.
+
+Exits are 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, 64 invalid input. A PASS covers
+correctness of the executed checks. A missing runtime or timed-out operation is
+INCONCLUSIVE; a numerical mismatch is FAIL without automatically diagnosing a
+physical unit as defective. Whole-device health remains INCONCLUSIVE.
+
+## Compare measured performance
+
+Use [perf-doctor](v2/perf-doctor.md) for a fresh measurement, saved run and explicit
+baseline comparison:
 
 ```bash
-omnismi bench bandwidth
-omnismi bench bandwidth --dtype bf16 --pattern triad
-omnismi bench bandwidth --profile h100-pcie-80gb -o json
+omnismi perf-doctor --run bandwidth --vendor nvidia --context conditions.json --save-measurement run.json
+omnismi perf-doctor --input run.json --baseline baseline.json
 ```
 
-## Common report envelope
+Conditions must reflect the actual model, runtime, driver, power/clock and partition
+state. A usable baseline requires independent recorded runs with matching
+signatures. No universal pass percentage or hardware baseline is invented.
+For a no-hardware example with provided files, start with the
+[quickstart performance comparison](quickstart.md#try-the-performance-comparison).
 
-All structured outputs should follow one report envelope regardless of whether
-the subcommand is `bandwidth`, `matmul`, or `suite`.
+## Legacy bandwidth report
 
-### Top-level shape
+The existing `bench bandwidth` interface remains available:
 
-```yaml
-apiVersion: omnismi/v1alpha1
-kind: BenchReport
-metadata:
-  run_id: "6b862469-7f5d-4d0d-a9d6-1a5ff9d6a245"
-  generated_at: "2026-04-23T03:11:02Z"
-  omnismi_version: "1.1.0-dev"
-command:
-  argv:
-    - "omnismi"
-    - "bench"
-    - "bandwidth"
-    - "--profile"
-    - "h100-pcie-80gb"
-    - "-o"
-    - "yaml"
-  subcommand: "bandwidth"
-  output: "yaml"
-spec:
-  devices: [0]
-  all_devices: false
-  vendor: "nvidia"
-  profile: "h100-pcie-80gb"
-  runtime: "auto"
-  warmup_seconds: 1.0
-  duration_seconds: 5.0
-  repeats: 5
-inventory:
-  devices:
-    - index: 0
-      vendor: "nvidia"
-      name: "NVIDIA H100 PCIe"
-      uuid: "GPU-1234"
-      driver: "550.54.15"
-      memory_total_bytes: 85899345920
-results: []
-summary:
-  execution_status: "success"
-  verdict_status: "INCONCLUSIVE"
-  result_count: 0
-  pass_count: 0
-  warn_count: 0
-  fail_count: 0
-  inconclusive_count: 0
+```bash
+omnismi bench bandwidth --vendor nvidia --dtype fp32 --pattern copy --include-samples -o json
 ```
 
-### Top-level fields
+It uses Omnismi's management/global selection first, then a compatible NVIDIA/AMD
+torch runtime, and emits the existing `BenchReport` in table, JSON or YAML form.
+Its arguments and exit behavior differ from the new bounded commands:
 
-- `apiVersion`: versioned schema identifier, starting with `omnismi/v1alpha1`
-- `kind`: fixed as `BenchReport`
-- `metadata`: report identity and generation metadata
-- `command`: the invoked command shape
-- `spec`: normalized benchmark request parameters
-- `inventory`: Omnismi-discovered devices in scope for the run
-- `results`: flat list of per-device, per-case benchmark outputs
-- `summary`: overall execution and verdict rollup
+- `--device` can repeat; `--all-devices` selects the current visible scope.
+- `--pattern copy|triad`, `--dtype fp32|fp16|bf16`, `--buffer-bytes`, `--iterations`,
+  `--warmup-seconds`, `--duration-seconds`, `--repeats` and `--include-samples` control
+  the probe; `--runtime` accepts `auto` or `torch`.
+- `--profile` attaches profile context. Raw throughput does not establish an
+  expected-performance verdict; inspect the report and use `perf-doctor`.
+- `-o table|json|yaml`, `--color` and `--no-color` control rendering.
+- Inspect `summary.execution_status` and results; this older command may exit 0
+  even when a probe reports an error.
 
-## Result schema
-
-`results` should stay flat instead of nesting deeply by probe. That makes it
-easier for agents, CI, and data tooling to filter by `probe`, `device_index`,
-or `case_name`.
-
-### Common result fields
-
-Each item in `results` should contain:
-
-- `result_id`: stable identifier within a report
-- `probe`: `bandwidth` or `matmul`
-- `case_name`: user-facing case label such as `copy_fp32_1gib`
-- `device_index`: Omnismi global device index
-- `execution`:
-  - `status`: `success|partial|error|skipped`
-  - `started_at`
-  - `ended_at`
-  - `errors`
-- `parameters`: probe-specific inputs after preset expansion
-- `statistics`:
-  - `sample_count`
-  - `min_seconds`
-  - `mean_seconds`
-  - `median_seconds`
-  - `p95_seconds`
-  - `max_seconds`
-  - `stdev_seconds`
-- `metrics`: normalized measured and derived metrics
-- `comparison`: optional comparison against the selected hardware profile
-- `verdict`:
-  - `status`: `PASS|WARN|FAIL|INCONCLUSIVE`
-  - `reasons`
-
-The current `bandwidth` implementation fills this schema with stable execution
-and measurement data today, while leaving `comparison` and profile-aware
-`verdict` thresholds intentionally conservative until more curated benchmark
-baselines are added.
-
-## Bandwidth result schema
-
-Bandwidth probe results should use these `parameters` and `metrics` keys.
-
-### `parameters`
-
-- `pattern`
-- `dtype`
-- `buffer_bytes`
-- `iterations`
-- `bytes_per_iteration`
-
-### `metrics`
-
-- `bandwidth_bytes_per_s`
-- `arithmetic_intensity_flops_per_byte`
-
-For pure bandwidth patterns, `arithmetic_intensity_flops_per_byte` may be `0.0`
-or omitted if not meaningful.
-
-### Example
-
-```yaml
-results:
-  - result_id: "bandwidth:0:copy_fp32_1gib"
-    probe: "bandwidth"
-    case_name: "copy_fp32_1gib"
-    device_index: 0
-    execution:
-      status: "success"
-      started_at: "2026-04-23T03:11:03Z"
-      ended_at: "2026-04-23T03:11:09Z"
-      errors: []
-    parameters:
-      pattern: "copy"
-      dtype: "fp32"
-      buffer_bytes: 1073741824
-      iterations: 400
-      bytes_per_iteration: 2147483648
-    statistics:
-      sample_count: 5
-      min_seconds: 0.00108
-      mean_seconds: 0.00112
-      median_seconds: 0.00111
-      p95_seconds: 0.00116
-      max_seconds: 0.00117
-      stdev_seconds: 0.00003
-    metrics:
-      bandwidth_bytes_per_s: 1917396114285.71
-      arithmetic_intensity_flops_per_byte: 0.0
-    comparison:
-      profile: "h100-pcie-80gb"
-      metric: "memory_bandwidth_bytes_per_s"
-      expected: 2039000000000.0
-      observed: 1917396114285.71
-      observed_ratio: 0.9404
-      warn_below_ratio: 0.80
-      fail_below_ratio: 0.60
-    verdict:
-      status: "PASS"
-      reasons:
-        - "Observed sustained bandwidth is within the expected range for the selected profile."
-```
-
-## Matmul result schema
-
-Matmul probe results should use these `parameters` and `metrics` keys.
-
-### `parameters`
-
-- `m`
-- `n`
-- `k`
-- `batch`
-- `dtype`
-- `iterations`
-
-### `metrics`
-
-- `throughput_flops_per_s`
-- `arithmetic_intensity_flops_per_byte`
-- `flops_per_iteration`
-
-### Example
-
-```yaml
-results:
-  - result_id: "matmul:0:bf16_standard"
-    probe: "matmul"
-    case_name: "bf16_standard"
-    device_index: 0
-    execution:
-      status: "success"
-      started_at: "2026-04-23T03:12:00Z"
-      ended_at: "2026-04-23T03:12:08Z"
-      errors: []
-    parameters:
-      m: 8192
-      n: 8192
-      k: 8192
-      batch: 1
-      dtype: "bf16"
-      iterations: 200
-    statistics:
-      sample_count: 5
-      min_seconds: 0.00178
-      mean_seconds: 0.00184
-      median_seconds: 0.00183
-      p95_seconds: 0.00189
-      max_seconds: 0.00190
-      stdev_seconds: 0.00004
-    metrics:
-      throughput_flops_per_s: 608934229508196.75
-      arithmetic_intensity_flops_per_byte: 1365.33
-      flops_per_iteration: 1099511627776
-    comparison:
-      profile: "h100-pcie-80gb"
-      metric: "peak_bf16_flops_per_s"
-      expected: 756000000000000.0
-      observed: 608934229508196.75
-      observed_ratio: 0.8055
-      warn_below_ratio: 0.60
-      fail_below_ratio: 0.35
-    verdict:
-      status: "PASS"
-      reasons:
-        - "Observed BF16 GEMM throughput is within the selected profile threshold."
-```
-
-## Summary schema
-
-The `summary` object should make it easy to answer "did this node look healthy?"
-without reprocessing every row.
-
-Expected keys:
-
-- `execution_status`: `success|partial|error`
-- `verdict_status`: `PASS|WARN|FAIL|INCONCLUSIVE`
-- `result_count`
-- `pass_count`
-- `warn_count`
-- `fail_count`
-- `inconclusive_count`
-- `profile`
-- `worst_result_id`
-- `worst_observed_ratio`
-
-`verdict_status` rules:
-
-- `FAIL` if any result is `FAIL`
-- `WARN` if there are no `FAIL` results and at least one `WARN`
-- `PASS` if every completed result is `PASS`
-- `INCONCLUSIVE` if no meaningful profile comparison was possible
-
-## Design notes for implementation
-
-- The benchmark layer should be optional and must not expand the minimal Python
-  observability API.
-- Structured output should share one object model across `json` and `yaml`.
-- Table output is a projection of the structured report, not a separate contract.
-- Missing runtime support should surface as `execution.status=error` with a
-  human-readable message, while the overall report may still remain
-  `INCONCLUSIVE` instead of `FAIL`.
+Prefer `perf-doctor --run bandwidth` when a hard subprocess deadline and a
+baseline-ready measurement are needed. Current flags are also available via
+`omnismi bench bandwidth --help`.

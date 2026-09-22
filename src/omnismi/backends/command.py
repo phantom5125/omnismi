@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import selectors
 import signal
@@ -11,8 +12,10 @@ import time
 from omnismi.errors import BackendError
 
 
-def query_text(argv: list[str]) -> str:
-    """Run a fixed vendor query on POSIX, with a 5-second/1-MiB total budget."""
+def query_text(argv: list[str], *, timeout: float = 5.0) -> str:
+    """Run a fixed query on POSIX, with a wall-time/1-MiB total budget."""
+    if not math.isfinite(timeout) or not 0 < timeout <= 600:
+        raise ValueError("Query timeout must be in (0, 600] seconds")
     if os.name != "posix":
         raise BackendError("Vendor command collection currently requires POSIX")
     limit = 1_048_576
@@ -26,7 +29,7 @@ def query_text(argv: list[str]) -> str:
     )
     assert process.stdout is not None and process.stderr is not None
     chunks: dict[str, bytearray] = {"stdout": bytearray(), "stderr": bytearray()}
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + timeout
     reaped = False
     try:
         with selectors.DefaultSelector() as selector:

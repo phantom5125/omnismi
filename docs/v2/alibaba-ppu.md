@@ -1,86 +1,95 @@
-# Alibaba / T-Head PPU adapter
+# Alibaba / T-Head SAIL PPU
 
-Status: experimental PPU-SMI adapter implemented and registered; fixture-tested,
-not hardware-validated. Initial metrics coverage is memory only.
+The adapter is registered as vendor `alibaba` and uses documented SAIL v2.1.1
+PPU-SMI queries. It is fixture-tested; no PPU model is marked hardware-verified.
+Install vendor tooling independently and put `ppu-smi` on PATH.
 
-## Available now
+```bash
+omnismi --vendor alibaba --output json
+omnismi diagnose --collect hardware --vendor alibaba
+omnismi decode --vendor alibaba --namespace xid-ppu001 --code 2706
+omnismi decode --vendor alibaba --namespace xid-ppu0015 --code 4997
+omnismi topology --collect-vendor alibaba
+```
 
-Install the vendor's SAIL/KMD tooling separately and make `ppu-smi` available on
-PATH. Core Omnismi adds no SDK dependency or installer. Existing Python APIs and
-`omnismi --vendor alibaba` / `omnismi doctor --vendor alibaba` discover physical
-PPUs through an explicit CSV query of index, name, UUID, PCI address, driver,
-total memory and used memory. MiB is converted to bytes. Unknown fields remain
-None; temperature, power, activity and clocks are not yet queried.
+Inventory/memory use CSV fields index/name/UUID/PCI/driver/memory.total/memory.used.
+Telemetry uses documented `ppu-smi -q` sections: utilization (Ppu, %), current
+temperature (C), power draw (W), CU and memory clocks (MHz). UUID/PCI must match
+between inventory and telemetry. Ambiguous IDs, unknown units and invalid ranges
+are rejected. Memory remains available when optional telemetry is unavailable;
+passive hardware reports retain the telemetry error reason and ECC counters.
 
-The adapter queries at most once per 0.5 seconds on demand, with a 5-second timeout
-and 1-MiB command output budget. It uses no shell, control/reset flags or background
-sampler. UUID/PCI identity prevents reused indexes silently replacing devices.
-Missing tools remain unavailable; malformed output and failed commands remain errors.
+MiB is converted to bytes. Missing fields stay null and zero stays zero. Sampling
+is cached for 0.5 seconds on demand, with a 5-second / 1-MiB budget per command,
+no shell and no background polling. The hardware-diagnosis and live-topology
+wrappers additionally enforce whole-operation deadlines.
 
-Source: [SAIL PPU-SMI manual, SDK v2.1.1](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=221),
-reviewed 2026-09-22, sections 3.2 and 3.2.1. The official manual identifies HGML as
-the underlying management library and documents CSV/nounits and the selected
-fields. This implementation uses that documented CLI boundary, not an invented HGML ABI.
+PPU XID coverage contains all numeric rows in the reviewed PPU001 (68) and PPU0015
+(87) tables. Reporting-client attribution is not proof that that block is defective.
+Generation must be selected explicitly; codes are never borrowed from NVIDIA.
+Four documented SRAM/DRAM correctable/uncorrectable counter rules preserve historical
+volatile/aggregate scope. ICN matrices preserve path labels and bond counts without
+claiming measured bandwidth or direct peer links.
 
-Limitations: physical management visibility, not verified process-runtime visibility;
-MIG children, CUDA-compatible duplicate discovery, other telemetry, native HGML
-bindings and real-device parity remain unvalidated. No card is marked verified.
+Physical management visibility is not guaranteed runtime/MIG visibility. Native
+HGML is accessed through the vendor's PPU-SMI boundary. Active probes use the native
+HGGC runtime directly, with its own runtime-local device index. They do not select
+PPUs through a generic CUDA or torch device ordinal.
 
-Official references for the next diagnostic increment:
-- [PPU XID overview](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=181)
+## Native SAIL self-test and performance probes
+
+On a Linux host with the matching SAIL SDK, activate the vendor's compiler and
+runtime environment, then build Omnismi's bundled source:
+
+```bash
+mkdir -p bin
+omnismi sail-build --output "$PWD/bin/omnismi-sail-probe"
+export OMNISMI_SAIL_PROBE="$PWD/bin/omnismi-sail-probe"
+omnismi diagnose --self-test --vendor alibaba --device 0 --memory-mib 64 --timeout 30
+omnismi bench suite --vendor alibaba --device 0 --memory-mib 64 --timeout 90
+omnismi perf-doctor --run bandwidth --vendor alibaba --context conditions.json --save-measurement ppu-copy.json
+omnismi perf-doctor --run compute --vendor alibaba --context conditions.json --save-measurement ppu-matmul.json
+```
+
+`--compiler /path/to/hgcc` selects the installed compiler. By default both
+`ppu_10` and `ppu_15` are compiled; repeat `--architecture` to select specific
+supported targets. Builds are bounded by `--timeout` (default 120 seconds), return
+source hashes, never overwrite an existing output and never run a workload.
+The runtime also searches PATH for `omnismi-sail-probe` when the environment
+variable is absent. A missing binary/SDK, invalid protocol, runtime error or timeout
+is INCONCLUSIVE; no torch installation or SDK download happens automatically.
+
+The worker allocates three FP32 buffers within the declared device-memory budget.
+Copy and vector-add correctness use position-dependent patterns at four scales;
+self-test also verifies matrix multiplication. Timed copy, vector add and tiled
+16x16 FP32 matrix multiplication retain repeated synchronized host timings and
+verify the final output. The compute probe is Omnismi's portable kernel, not a
+vendor BLAS/tensor-core peak benchmark; its exact version remains in the baseline
+signature. Small buffers may hit cache. See [performance](perf-doctor.md) for byte
+and FLOP accounting, context fields and baseline construction.
+
+Identity comes from `hggcGetDeviceProperties`, `hggcRuntimeGetVersion` and
+`hggcDriverGetVersion`; raw runtime/driver version integers are preserved. Device
+selection respects the installed runtime's `HGGC_VISIBLE_DEVICES` behavior.
+Documented domain/bus/device properties do not include a PCI function, so the
+report preserves a partial `pci_location` and does not invent a complete BDF or
+join it to management inventory. Whole-device health remains INCONCLUSIVE even
+when the selected correctness checks pass.
+
+The host-control code is compiled and tested locally with a deliberately synthetic
+runtime, including corruption and error paths. HGGC device compilation and real
+PPU execution remain to be verified on the target SDK/card; no such result is
+claimed from the CPU tests.
+
+Primary references:
+
+- [PPU-SMI v2.1.1 manual](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=221)
 - [PPU001 XID table](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=182)
+- [HGGC programming guide](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=196)
+- [HGCC compiler guide](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=210)
+- [Pinned official HGGC examples](https://github.com/t-head/hggc-samples/tree/ff1a055950ba70c308bf27357acf9bd4f7b61719)
 - [PPU0015 XID table](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=183)
-- [ECC handling](https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=38&chapterId=184)
 
-These tables are generation-specific and are not yet included in the decoder.
-The source index was retrieved from the site's public document API after the
-initial HTML-only fetch could not render the dynamic site.
-Target SKU and SDK version await confirmation. Use the Alibaba PPU family as the
-provisional scope; the SDK guide's example SKU is not a hardware support promise.
-
-## Verified starting point
-
-Official source `alibaba-ppu-sdk` in `sources.json` documents `ppu-smi`, `ppu-smi -q`
-and `asys status --ppu-env`. This identifies a practical discovery path; it does
-not establish a stable NVML ABI or NVIDIA-compatible error semantics. Verify a
-machine-readable output mode or SDK management ABI before selecting the collector.
-
-## Implementation sequence
-
-1. Obtain target SKU, installed SDK/driver versions, management SDK documentation,
-   header/API signatures, `ppu-smi --help` and anonymized device/query samples.
-   Record output format/version and distribution permissions for test fixtures.
-2. `backends/alibaba_ppu.py`: optional lazy adapter, vendor `alibaba`, accelerator
-   kind `ppu` in the richer report; retain the existing GPU API for compatibility.
-   Prefer an officially documented structured interface. If only text is available,
-   use an explicit versioned parser with unknown-format errors, never column guessing.
-3. Inventory: identity, model, driver, total memory and PCI identity. Metrics:
-   documented memory usage, temperature, power and activity, with verified units
-   and semantics. Unsupported fields are None with a capability reason.
-4. Register the backend, update VendorName and all CLI filters/diagnostic backend
-   metadata. Check existing visibility/reporting assumptions; do not infer PPU
-   selection semantics from CUDA environment variables without verification.
-5. No-SDK and fixture tests; real-device parity against `ppu-smi`, then compatibility
-   matrix entry. Add benchmark/topology/error capabilities in later commits only
-   when their APIs and hardware evidence are available.
-
-## Boundaries and acceptance
-
-Core install has no PPU dependency, driver download or runtime installation.
-Library imports do not launch subprocesses. Collectors have timeouts, no shell,
-structured errors and no reset/control operations. Device enumeration cannot
-claim support solely from a PCI device number or generic CUDA compatibility.
-
-Test missing SDK/tool, old/unknown versions, multi-device identity, unavailable
-metrics, malformed output, timeout, permission denial and exact unit conversion.
-Hardware evidence includes model, OS, driver/SDK, tool output and normalized report.
-Until then label only fixture-tested/experimental, never hardware-verified.
-
-## User-confirmed SDK direction
-
-Use T-Head SAIL SDK as the primary software stack. The official developer-center
-search index lists runtime/driver APIs, KMD ECC/XID references and interconnect
-documentation. Retrieve and pin those specific manuals before coding bindings or
-rules; the index is not an ABI reference. The older Alibaba Cloud SDK guide above
-is supplementary. PPU XID codes must use vendor `alibaba`, never inherit NVIDIA
-Xid rules merely because the namespace name matches.
+Source hashes/review dates are packaged in the offline catalog. No driver/SDK
+installer or complete proprietary manual is bundled. Real-device parity, installed
+SDK versions, runtime visibility and exact target card remain validation inputs.

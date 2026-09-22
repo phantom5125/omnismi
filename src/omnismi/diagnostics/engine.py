@@ -12,6 +12,7 @@ from omnismi.diagnostics.catalog import load_catalog
 from omnismi.diagnostics.parsers import (
     MAX_EVENTS,
     clean_text,
+    parse_events,
     parse_log,
     parse_ras_counts,
 )
@@ -61,7 +62,11 @@ def _finding(
     finding["rule_id"] = finding.pop("id")
     finding.update(
         recognized=True,
-        status="FAIL" if rule["severity"] == "critical" else "WARN",
+        status=(
+            "FAIL"
+            if rule["severity"] == "critical"
+            else "INCONCLUSIVE" if rule["severity"] == "informational" else "WARN"
+        ),
         assessment="observed_event",
         hardware_assessment="unconfirmed",
         evidence_ids=[],
@@ -102,6 +107,19 @@ def _report(
 
 def _finish(report: dict[str, Any], catalog: dict[str, Any]) -> dict[str, Any]:
     findings = report["data"]["findings"]
+    model = report["scope"]["context"].get("model", "").upper()
+    family = re.fullmatch(r"(?:NVIDIA\s+)?(A100|H100|B100|GB200)(?:[ -].*)?", model)
+    if family:
+        for finding in findings:
+            flags = finding.get("catalog_model_applicability", {})
+            applies = flags.get(family[1])
+            finding["model_applicability"] = applies
+            if applies is False:
+                finding["status"] = "INCONCLUSIVE"
+                finding["assessment"] = "catalog_model_mismatch"
+                report["limitations"].append(
+                    "Catalog excludes the supplied model for an observed code."
+                )
     # Repeated observations share an explanation; evidence still keeps each line.
     # This is output deduplication, not a causal or temporal inference.
     compact: dict[tuple[Any, ...], dict[str, Any]] = {}
@@ -109,7 +127,15 @@ def _finish(report: dict[str, Any], catalog: dict[str, Any]) -> dict[str, Any]:
     for finding in findings:
         key = tuple(
             finding.get(k)
-            for k in ("vendor", "namespace", "code", "pci_address", "block", "status")
+            for k in (
+                "vendor",
+                "namespace",
+                "code",
+                "pci_address",
+                "uuid",
+                "block",
+                "status",
+            )
         )
         if key not in compact:
             compact[key] = finding
@@ -152,7 +178,7 @@ def decode_error(
     code = str(code).lower()
     if not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,63}", code):
         raise ValueError("Invalid error code")
-    if namespace == "xid" and code.isdecimal():
+    if namespace.startswith("xid") and code.isdecimal():
         code = str(int(code))
     catalog = load_catalog()
     report = _report("error_decode", catalog, _context(context))
@@ -178,8 +204,8 @@ def diagnose(
     Timestamp/identity are preserved per event. No cross-line causality, reset,
     current-health verdict or inferred device mapping is asserted.
     """
-    if input_format not in {"dmesg", "ras"}:
-        raise ValueError("Supported input formats: dmesg, ras")
+    if input_format not in {"dmesg", "ras", "events"}:
+        raise ValueError("Supported input formats: dmesg, ras, events")
     if type(max_events) is not int or not 1 <= max_events <= MAX_EVENTS:
         raise ValueError("max_events must be between 1 and 500")
     if input_format == "ras":
@@ -192,7 +218,11 @@ def diagnose(
     else:
         if block is not None or pci_address is not None:
             raise ValueError("block and pci_address apply only to RAS input")
-        parsed = parse_log(text, max_events=max_events)
+        parsed = (
+            parse_events(text, max_events=max_events)
+            if input_format == "events"
+            else parse_log(text, max_events=max_events)
+        )
     catalog = load_catalog()
     report = _report("diagnosis", catalog, _context(context))
     report["scope"]["input_format"] = input_format
@@ -203,6 +233,8 @@ def diagnose(
         finding["evidence_ids"] = [event["id"]]
         finding["pci_address"] = event["pci_address"]
         finding["block"] = event["block"]
+        if event.get("uuid"):
+            finding["uuid"] = event["uuid"]
         if event["namespace"] == "ras":
             finding["affected_units"] = [f"ras:{event['block']}"]
             if event["count"] == 0:

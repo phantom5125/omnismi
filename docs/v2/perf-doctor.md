@@ -1,7 +1,7 @@
 # Performance expectations and perf-doctor
 
-Status: offline evaluator and existing BenchReport import implemented on this
-branch; no built-in hardware baseline, new probe runner or real-device validation.
+Status: offline comparison, baseline authoring and explicit bounded bandwidth/compute
+probes are implemented. Real shared hardware baselines require recorded runs.
 
 ## Available now
 
@@ -47,60 +47,76 @@ convention is `read_plus_write`. Context must come from actual run conditions;
 missing values are never copied from the baseline merely to make them match.
 
 See `examples/performance/` for explicitly synthetic arithmetic examples. They
-are not hardware reference values. File inputs are bounded to 1 MiB; no benchmark
-or device access occurs in this command. The planned `--run` path below is not yet
-implemented.
+are not hardware reference values. File inputs are bounded to 1 MiB; offline `--input` never accesses a device.
+Explicit live execution and baseline authoring are documented below.
 
-## User-facing contract
+## Live measurements and maintained baselines
 
-```text
-omnismi perf-doctor --input bench-report.json --baseline baseline.json
-omnismi perf-doctor --run bandwidth --profile h100-pcie-80gb
+```bash
+omnismi perf-doctor --run bandwidth --vendor nvidia --device 0 --memory-mib 64 --repeats 5 --timeout 30 --context conditions.json --save-measurement run1.json
+omnismi perf-doctor --run compute --vendor nvidia --device 0 --memory-mib 64 --timeout 30 --context conditions.json --save-measurement compute1.json
+omnismi perf-doctor --build-baseline lab-copy --measurement run1.json --measurement run2.json --policy policy.json > baseline.json
+omnismi perf-doctor --input fresh-run.json --baseline baseline.json
 ```
 
-Proposed Python: `evaluate_performance(measurement, baseline)`. Offline evaluation
-is independent of device access. `--run` explicitly executes a bounded workload
-through the existing bandwidth probe. Matmul and multi-device transfer probes are
-later additions with their own metric definitions.
+Each live call runs in a disposable child process with a whole-operation deadline
+(0..600 seconds, exclusive lower bound), combined 1-MiB output budget and process
+group cleanup. Only explicit `--run` allocates accelerator tensors. Runtime-local
+indexes are not management/global Omnismi indexes. Missing runtimes, wrong vendor,
+allocation errors and timeouts are INCONCLUSIVE; observed incorrect results are FAIL.
 
-## Denominators and comparability
+The tensor budget is 1..4096 MiB across three primary float32 buffers. Runtime
+context, cached allocations and library workspace overhead are outside that budget.
+Copy uses read+write bytes; triad uses two reads plus one write. Compute is dense
+FP32 matrix multiplication with 2*N^3 FLOPs per iteration, dimensions derived from
+the budget and capped at 2048. NVIDIA torch requests highest FP32 precision and
+disables TF32 for compute. The exact probe/version is part of the signature.
+These are portable host-timed synchronized probes, not vendor peak-kernel benchmarks.
+Small buffers may fit in cache; do not compare them to a different memory regime.
 
-Report separately `percent_of_theoretical_peak` and `percent_of_expected_sustained`.
-Neither is accelerator utilization. Compute 100 * observed / reference only with
-positive finite, unit-compatible references and a matching benchmark signature.
-Do not clip values above 100%; flag the comparison for review. Do not fabricate an
-80% threshold from a marketing bandwidth number. Missing or mismatched baselines
-produce INCONCLUSIVE, never FAIL.
+The worker checks copy/vector correctness before timing, verifies the final timed
+output, warms up, and retains
+2..100 repeated samples with mean, sample standard deviation and coefficient of
+variation. A run produces one measurement with a unique run ID. Distinct live calls
+are needed to build a baseline; inner timing repeats are not independent run IDs.
 
-Baseline identity includes SKU/form factor, partition/MIG mode, memory mode,
-benchmark/version, kernel/pattern, dtype, buffer size, read/write byte convention,
-runtime/version, device count, power limit and clock policy. Record collection
-conditions, source runs, sample count and dispersion. Mark essential mismatches
-ineligible; any tolerated difference is explicit and justified in baseline metadata.
+Runtime captures vendor, model, probe/version, pattern, dtype, buffer size, byte/FLOP
+convention, runtime/version and device count. Supply actual remaining conditions:
+form_factor, partition, memory_mode, driver_version, power_limit_w and clock_policy.
+Do not fill them by copying the desired baseline. `--context` cannot override
+observed values. Without conditions or a baseline the measurement is still saved,
+but comparison is INCONCLUSIVE. An existing output file is never overwritten.
 
-For copy, clearly state whether both read and write bytes are counted. Separate
-GB/s from GiB/s, dense from sparse math, and host-device from device-memory bandwidth.
-A theoretical profile is a specification; a sustained baseline is measured evidence.
-Neither comes from guessing the device name or reusing a different GPU's result.
+Example policy (operator-selected, not a universal hardware recommendation):
 
-## Implementation sequence
+```json
+{"fail_below_percent":60,"pass_at_least_percent":90,"rationale":"Thresholds approved for this specific lab workload."}
+```
 
-1. `performance/models.py`: versioned measurement and baseline records, provenance,
-   comparability requirements and threshold policy. Reuse existing bench evidence.
-2. `performance/evaluate.py`: pure comparison, denominator validation, explicit
-   PASS/WARN/FAIL policy supplied by the baseline, and INCONCLUSIVE reasons.
-3. `performance/baselines/`: reviewed sustained baselines with raw-run provenance;
-   initially allow user-provided baselines until validated shared data exists.
-4. CLI offline evaluation, then opt-in repeated probe with warmup, synchronization,
-   bounded memory/time, variance and interference reporting.
-5. Optional topology/diagnostics evidence explains possible causes of a low result;
-   percentage alone never asserts a faulty unit. Record temperature/power trends
-   where observable, and distinguish throttling suspicion from observed limiting.
+`--build-baseline ID` requires 2..1000 positive measurements with exact matching
+signatures, units and unique source IDs. It retains complete input measurements,
+uses their mean as expected sustained performance and stores sample standard
+deviation. Unknown conditions, repeated IDs, mixed workloads or nonfinite values
+are rejected. Optional `--theoretical-peak reference.json` adds a separately sourced
+reference; `--policy policy.json` supplies classification thresholds. Without a
+policy the ratios can be reported but no pass threshold is invented.
 
-## Acceptance
+Python: `omnismi.baselines.build_baseline` and `omnismi.probe_runtime.run_probe`.
+NVIDIA/AMD torch, modern torch_mlu and native SAIL HGGC are implemented runtime
+boundaries. SAIL requires an explicit SDK-local `omnismi sail-build`; see the
+[PPU guide](alibaba-ppu.md). It captures raw runtime/driver version integers and
+uses a distinct portable tiled FP32 kernel. No SDK or torch package is installed
+automatically. Actual vendor execution still requires target-host verification.
 
-Tests cover reference zero/negative/NaN/infinity, missing metrics, incompatible
-units/patterns/dtypes/partition modes, threshold boundaries and >100% observations.
-Validate output against independently calculated fixtures. Baselines require
-repeatable real-device measurements before becoming built-in recommendations.
-Regression-test existing `bench bandwidth` behavior and no-vendor operation.
+`omnismi bench matmul --vendor VENDOR` directly returns the bounded compute probe
+report. `omnismi bench suite --vendor VENDOR` runs self-test, copy bandwidth, triad
+bandwidth and compute in sequence, sharing one `--timeout` budget (default 90
+seconds). Each step runs in a fresh runtime process and retains its identity,
+correctness checks and raw samples. The suite stops after any non-PASS probe and
+records skipped steps. Its PASS means the workloads executed correctly; it does
+not evaluate expected performance or certify hardware health. Use the contained
+measurements with recorded conditions and `perf-doctor` for baseline comparison.
+
+The included examples are synthetic arithmetic fixtures, never real GPU reference
+values. Publish maintained hardware baselines only after collecting actual repeated
+runs with model/driver/runtime, power/clock/partition conditions and raw samples.

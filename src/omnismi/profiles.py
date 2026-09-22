@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+import sys
+from dataclasses import dataclass
 
 from omnismi.models import VendorName
 
 _NORMALIZE_RE = re.compile(r"[^a-z0-9]+")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **({"slots": True} if sys.version_info >= (3, 10) else {}))
 class MachineProfile:
     """A small curated hardware-profile record used by the CLI."""
 
@@ -94,7 +95,9 @@ def profile_to_dict(profile: MachineProfile) -> dict[str, object]:
     }
 
 
-def profile_matches_device_name(profile: MachineProfile, device_name: str | None) -> bool:
+def profile_matches_device_name(
+    profile: MachineProfile, device_name: str | None
+) -> bool:
     """Return whether a device name resembles one of the profile aliases."""
 
     if not device_name:

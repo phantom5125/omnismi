@@ -1,10 +1,11 @@
 # Omnismi 2.0 implementation plan
 
-Status: initial diagnostics, performance comparison, topology and SAIL PPU
-implementations are combined on `codex/v2-preview`, 2026-09-22. Independent draft
-PRs remain open against `codex/v2-integration`; see [delivery status](STATUS.md)
-for exact scope, validation and remaining work. Cambricon is interface research
-only. No new backend has been validated on hardware.
+Status: the second implementation on `codex/v2-runtime-completion` extends the
+combined `codex/v2-preview` with active probes, baseline authoring, live topology,
+full PPU telemetry, native SAIL workloads and an SDK-compiled Cambricon adapter.
+`bench matmul` and `bench suite` now execute bounded probes. See [delivery status](STATUS.md)
+for commands, validation and remaining external evidence. No new card has been
+hardware-validated or promoted to verified status.
 
 ## Goal
 
@@ -41,7 +42,7 @@ semantics and exit codes before accepting either implementation into the 2.0
 release baseline. Do not blindly merge the two CLI files. The old `dc/test`
 hardware-detection changes require separate review for container false negatives.
 
-## Shared report contract (proposed)
+## Shared report contract
 
 - `schema_version`, `report_type`, `tool_version`, `status`, `scope`, `data`,
   `evidence`, `limitations`, `sources`.
@@ -56,9 +57,9 @@ hardware-detection changes require separate review for container false negatives
   Findings reference evidence IDs and document/rule IDs. Do not emit invented
   numeric confidence; use `observed`, `suspected`, `inconclusive` with reasons.
 - Compact JSON is the default for new agent commands; stderr carries diagnostics.
-  Proposed exit codes: 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, 64 invalid input,
-  70 internal failure. Reconcile these with PR #5 before implementation; existing
-  commands retain their behavior until an explicit migration is documented.
+  New-command exit codes: 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, 64 invalid input.
+  Existing overview/doctor/legacy bandwidth commands retain their behavior;
+  reconcile that migration with PR #5 before releasing 2.0.
 - Public Python functions return serializable report objects without printing or
   invoking an LLM. Runtime diagnosis has no network dependency.
 - Passive collection never resets devices, injects errors, changes affinity or

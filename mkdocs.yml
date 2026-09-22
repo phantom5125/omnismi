@@ -1,17 +1,28 @@
 site_name: Omnismi
 site_description: Cross-vendor GPU observability for AI agents and Python apps
-repo_url: https://github.com/omnismi/omnismi
+repo_url: https://github.com/phantom5125/omnismi
+edit_uri: edit/codex/v2-runtime-completion/docs/
 theme:
   name: material
   logo: assets/OMNIsmi.svg
   favicon: assets/OMNIsmi.svg
 nav:
   - Home: index.md
+  - Quickstart: quickstart.md
+  - 中文上手指南: quickstart.zh-CN.md
   - Why Omnismi: why-omnismi.md
   - API: api.md
   - CLI: cli.md
   - Bench: bench.md
   - Compatibility: compatibility.md
+  - 2.0 Preview:
+      - Delivery status: v2/STATUS.md
+      - Design and branches: v2/README.md
+      - Diagnostics: v2/diagnostics.md
+      - Performance: v2/perf-doctor.md
+      - Topology and affinity: v2/topology-affinity.md
+      - Alibaba PPU: v2/alibaba-ppu.md
+      - Cambricon MLU: v2/cambricon.md
   - Validation: validation.md
   - Roadmap: roadmap.md
   - Development: development.md

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from typing import Literal
 
-VendorName = Literal["nvidia", "amd", "google", "alibaba"]
+VendorName = Literal["nvidia", "amd", "google", "alibaba", "cambricon"]
 
 
-@dataclass(frozen=True, slots=True)
+# Python 3.9 supports frozen records, but automatic slots require Python 3.10.
+@dataclass(frozen=True, **({"slots": True} if sys.version_info >= (3, 10) else {}))
 class GPUInfo:
     """Static GPU information exposed by the public API."""
 
@@ -20,7 +22,7 @@ class GPUInfo:
     memory_total_bytes: int | None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, **({"slots": True} if sys.version_info >= (3, 10) else {}))
 class GPUMetrics:
     """Dynamic GPU metrics exposed by the public API."""
 

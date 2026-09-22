@@ -284,6 +284,10 @@ def recommend_affinity(report: dict[str, Any], device_id: str) -> dict[str, Any]
 
 
 def parse_nvidia_matrix(text: str) -> dict[str, Any]:
+    return parse_vendor_matrix(text, vendor="nvidia")
+
+
+def parse_vendor_matrix(text: str, *, vendor: str) -> dict[str, Any]:
     """Import nvidia-smi topo -m path labels, without guessing PCI identities.
 
     GPU/NIC aliases remain scoped to this one text snapshot. NV# records a bonded
@@ -291,15 +295,19 @@ def parse_nvidia_matrix(text: str) -> dict[str, Any]:
     """
     if not isinstance(text, str) or len(text.encode()) > 1_048_576:
         raise ValueError("Topology matrix exceeds 1 MiB or is not text")
+    if vendor not in {"nvidia", "alibaba"}:
+        raise ValueError("Unsupported topology vendor")
+    prefix, bond = ("GPU", "NV") if vendor == "nvidia" else ("PPU", "ICN")
+    alias_pattern = rf"(?:{prefix}|NIC)\d+"
     labels: list[str] = []
     rows: dict[str, list[str]] = {}
     for line in text.splitlines():
         words = line.split()
         if not words or words[0].startswith("Legend"):
             continue
-        if not labels and re.fullmatch(r"(?:GPU|NIC)\d+", words[0]):
+        if not labels and re.fullmatch(alias_pattern, words[0]):
             for word in words:
-                if not re.fullmatch(r"(?:GPU|NIC)\d+", word):
+                if not re.fullmatch(alias_pattern, word):
                     break
                 labels.append(word)
             if len(set(labels)) != len(labels) or len(labels) > 256:
@@ -310,7 +318,7 @@ def parse_nvidia_matrix(text: str) -> dict[str, Any]:
                 raise ValueError("Duplicate or incomplete matrix row")
             values = words[1 : len(labels) + 1]
             if any(
-                not re.fullmatch(r"X|SYS|NODE|PHB|PXB|PIX|NV[1-9]\d*", x)
+                not re.fullmatch(rf"X|SYS|NODE|PHB|PXB|PIX|{bond}[1-9]\d*", x)
                 for x in values
             ):
                 raise ValueError("Unrecognized matrix path label")
@@ -330,8 +338,8 @@ def parse_nvidia_matrix(text: str) -> dict[str, Any]:
                     "source": source,
                     "target": labels[j],
                     "path_label": label,
-                    "nvlink_bond_count": (
-                        int(label[2:]) if label.startswith("NV") else None
+                    ("nvlink_bond_count" if vendor == "nvidia" else "icn_bond_count"): (
+                        int(label[len(bond) :]) if label.startswith(bond) else None
                     ),
                 }
             )
@@ -339,5 +347,9 @@ def parse_nvidia_matrix(text: str) -> dict[str, Any]:
         "aliases": labels,
         "edges": edges,
         "identity_scope": "provided_matrix_only",
-        "source_url": "https://docs.nvidia.com/deploy/nvidia-smi/index.html#topology",
+        "source_url": (
+            "https://docs.nvidia.com/deploy/nvidia-smi/index.html#topology"
+            if vendor == "nvidia"
+            else "https://developer.t-head.cn/docs_center/doc_detail/index.html?projectId=39&chapterId=221"
+        ),
     }

@@ -90,12 +90,12 @@ visible accelerators.
 
 | Vendor | Model | Driver/Runtime Version | Ground Truth Library Version | Omnismi Version | Status | Evidence | Failure Cause |
 |---|---|---|---|---|
-| NVIDIA | H20 | CUDA/NVML-compatible stack (validated) | `nvidia-ml-py` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](../CHANGELOG.md#100---2026-02-25) | - |
+| NVIDIA | H20 | CUDA/NVML-compatible stack (validated) | `nvidia-ml-py` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](https://github.com/phantom5125/omnismi/blob/main/CHANGELOG.md#100---2026-02-25) | - |
 | NVIDIA | H100 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | H200 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | B200 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | RTX 4090 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
-| AMD | MI300X | ROCm/amdsmi-compatible stack (validated) | `amdsmi` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](../CHANGELOG.md#100---2026-02-25) | - |
+| AMD | MI300X | ROCm/amdsmi-compatible stack (validated) | `amdsmi` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](https://github.com/phantom5125/omnismi/blob/main/CHANGELOG.md#100---2026-02-25) | - |
 | AMD | MI250 | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | AMD | MI300A | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | AMD | MI325X | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
@@ -106,7 +106,7 @@ visible accelerators.
 ## Contributing validation evidence
 
 Community validation is welcome. If you validate a model, submit evidence and we can promote it from
-`🧪 Awaiting User Validation` to `✅ Verified`. See [CONTRIBUTING.md](../CONTRIBUTING.md) for
+`🧪 Awaiting User Validation` to `✅ Verified`. See [CONTRIBUTING.md](https://github.com/phantom5125/omnismi/blob/codex/v2-runtime-completion/CONTRIBUTING.md) for
 the required evidence template.
 
 ## Notes
@@ -118,6 +118,21 @@ the required evidence template.
 ## 2.0 development: Alibaba PPU
 
 The experimental `alibaba` backend uses the official SAIL PPU-SMI CSV interface.
-It supports physical device inventory and memory snapshots only, with no Python
+It supports physical inventory, memory and documented telemetry, with no Python
 vendor dependency. Fixtures pass; no PPU hardware/model is marked verified.
 See [adapter scope](v2/alibaba-ppu.md) for visibility and capability limitations.
+
+## 2.0 development runtime capabilities
+
+The `codex/v2-runtime-completion` branch adds SAIL PPU identity/memory/utilization/
+temperature/power/clocks, and a CNDEV SDK-compiled Cambricon collector for the same
+normalized fields. Both are **🧪 Awaiting User Validation**, not verified models.
+Their management view may differ from process-runtime/MIG/MIM visibility.
+
+Active bounded probes use NVIDIA/AMD torch, modern torch_mlu or an SDK-compiled
+native SAIL HGGC probe (`omnismi sail-build`). SAIL runtime identity is obtained
+from HGGC directly. Local synthetic-runtime tests do not certify the real SDK
+compiler, ABI or any PPU/MLU model; target-host validation remains required.
+Live vendor topology covers NVIDIA NVLink/MIG and PPU ICN; generic Linux PCI/NUMA/
+NIC/RDMA discovery is vendor independent. Read [the current status](v2/STATUS.md)
+for precise limitations and [Cambricon setup](v2/cambricon.md) for SDK compilation.

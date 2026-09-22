@@ -10,7 +10,9 @@ from pathlib import Path
 
 from omnismi.diagnostics.collectors import collect_kernel_log
 from omnismi.diagnostics.engine import decode_error, diagnose
+from omnismi.diagnostics.hardware import collect_hardware
 from omnismi.diagnostics.parsers import MAX_BYTES
+from omnismi.probe_runtime import run_probe
 
 EXIT_CODES = {"PASS": 0, "WARN": 1, "FAIL": 2, "INCONCLUSIVE": 3}
 
@@ -32,13 +34,27 @@ def run(argv: list[str]) -> int:
     else:
         inputs = parser.add_mutually_exclusive_group(required=True)
         inputs.add_argument("--input", help="UTF-8 regular file, or - for stdin.")
-        inputs.add_argument("--collect", choices=["passive"])
-        parser.add_argument("--format", choices=["dmesg", "ras"], default="dmesg")
+        inputs.add_argument("--collect", choices=["passive", "hardware"])
+        inputs.add_argument(
+            "--self-test",
+            action="store_true",
+            help="Explicit bounded memory and compute correctness test.",
+        )
+        parser.add_argument(
+            "--vendor", choices=["nvidia", "amd", "alibaba", "cambricon"]
+        )
+        parser.add_argument(
+            "--device", type=int, default=0, help="Runtime-local index for --self-test."
+        )
+        parser.add_argument("--memory-mib", type=int, default=64)
+        parser.add_argument(
+            "--format", choices=["dmesg", "ras", "events"], default="dmesg"
+        )
         parser.add_argument("--block")
         parser.add_argument("--pci-address")
         parser.add_argument("--include-raw", action="store_true")
         parser.add_argument("--max-events", type=int, default=500)
-        parser.add_argument("--timeout", type=float, default=5.0)
+        parser.add_argument("--timeout", type=float)
     try:
         args = parser.parse_args(argv[1:])
         context = {
@@ -53,13 +69,38 @@ def run(argv: list[str]) -> int:
             report = decode_error(
                 args.vendor, args.namespace, args.code, context=context
             )
+        elif args.self_test:
+            if not args.vendor:
+                raise ValueError("--self-test requires --vendor")
+            report = run_probe(
+                mode="self-test",
+                vendor=args.vendor,
+                device=args.device,
+                memory_mib=args.memory_mib,
+                timeout=args.timeout if args.timeout is not None else 30,
+            )
+        elif args.collect == "hardware":
+            if args.format != "dmesg" or args.block or args.pci_address:
+                raise ValueError(
+                    "Hardware collection cannot use supplied log format/identity"
+                )
+            report = collect_hardware(
+                vendor=args.vendor,
+                timeout=args.timeout if args.timeout is not None else 30,
+            )
         else:
+            if args.vendor:
+                raise ValueError(
+                    "--vendor applies to --self-test; log parsing identifies vendors"
+                )
             collected = None
             input_truncated = False
             if args.collect:
                 if args.format != "dmesg" or args.block or args.pci_address:
                     raise ValueError("Passive collection supports only dmesg format")
-                collected = collect_kernel_log(timeout=args.timeout)
+                collected = collect_kernel_log(
+                    timeout=args.timeout if args.timeout is not None else 5
+                )
                 text = collected.pop("text")
             elif args.input == "-":
                 text = sys.stdin.read(MAX_BYTES + 1)

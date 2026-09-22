@@ -49,15 +49,15 @@ dev = [
     "ruff>=0.6",
 ]
 docs = [
-    "mkdocs>=1.6",
+    "mkdocs>=1.6,<2",
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.24",
 ]
 
 [project.urls]
-Homepage = "https://github.com/omnismi/omnismi"
-Repository = "https://github.com/omnismi/omnismi"
-Documentation = "https://github.com/omnismi/omnismi/tree/main/docs"
+Homepage = "https://github.com/phantom5125/omnismi"
+Repository = "https://github.com/phantom5125/omnismi"
+Documentation = "https://github.com/phantom5125/omnismi/tree/codex/v2-runtime-completion/docs"
 
 [project.scripts]
 omnismi = "omnismi.cli:main"
@@ -67,6 +67,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "omnismi.diagnostics" = ["catalog.json"]
+"omnismi.backends" = ["cndev_probe.c", "sail_probe.hg", "sail_probe_host.hpp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
