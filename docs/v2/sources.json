@@ -3,12 +3,61 @@
   "checked_at": "2026-09-22",
   "status": "initial_reference_index_not_complete_catalog",
   "sources": [
-    {"id": "nvidia-xid", "publisher": "NVIDIA", "title": "Xid Errors", "url": "https://docs.nvidia.com/deploy/xid-errors/introduction.html", "scope": "Error interpretation; one code does not establish root cause"},
-    {"id": "nvidia-xid-catalog", "publisher": "NVIDIA", "title": "Analyzing Xid Errors with the Xid Catalog", "url": "https://docs.nvidia.com/deploy/xid-errors/analyzing-xid-catalog.html", "scope": "Version-aware error and recovery rules"},
-    {"id": "nvidia-triage", "publisher": "NVIDIA", "title": "GPU Node Triage", "url": "https://docs.nvidia.com/deploy/gpu-debug-guidelines/gpu-node-triage.html", "scope": "Evidence gathering and diagnostic escalation"},
-    {"id": "amdgpu-ras", "publisher": "Linux kernel project", "title": "AMDGPU RAS Support", "url": "https://docs.kernel.org/gpu/amdgpu/ras.html", "scope": "RAS block and counter interfaces; not a universal error-code map"},
-    {"id": "nvidia-smi", "publisher": "NVIDIA", "title": "NVIDIA System Management Interface", "url": "https://docs.nvidia.com/deploy/nvidia-smi/index.html", "scope": "Topology, affinity and device telemetry"},
-    {"id": "alibaba-ppu-sdk", "publisher": "Alibaba Cloud", "title": "真武 PPU SDK快速入门", "url": "https://help.aliyun.com/zh/document_detail/3030340.html", "scope": "ppu-smi, PPU SDK and environment discovery; exact target SKU/SDK unconfirmed"},
-    {"id": "cambricon-cndev", "publisher": "Cambricon", "title": "CNDev 开发者手册", "url": "https://developer.cambricon.com/index/document/details/classid/7/cid/31/id/590.html", "scope": "Official manual entry; full SDK access and ABI not verified"}
+    {
+      "id": "nvidia-xid",
+      "publisher": "NVIDIA",
+      "title": "Xid Errors",
+      "url": "https://docs.nvidia.com/deploy/xid-errors/introduction.html",
+      "scope": "Error interpretation; one code does not establish root cause"
+    },
+    {
+      "id": "nvidia-xid-catalog",
+      "publisher": "NVIDIA",
+      "title": "Analyzing Xid Errors with the Xid Catalog",
+      "url": "https://docs.nvidia.com/deploy/xid-errors/analyzing-xid-catalog.html",
+      "scope": "Version-aware error and recovery rules"
+    },
+    {
+      "id": "nvidia-triage",
+      "publisher": "NVIDIA",
+      "title": "GPU Node Triage",
+      "url": "https://docs.nvidia.com/deploy/gpu-debug-guidelines/gpu-node-triage.html",
+      "scope": "Evidence gathering and diagnostic escalation"
+    },
+    {
+      "id": "amdgpu-ras",
+      "publisher": "Linux kernel project",
+      "title": "AMDGPU RAS Support",
+      "url": "https://docs.kernel.org/gpu/amdgpu/ras.html",
+      "scope": "RAS block and counter interfaces; not a universal error-code map"
+    },
+    {
+      "id": "nvidia-smi",
+      "publisher": "NVIDIA",
+      "title": "NVIDIA System Management Interface",
+      "url": "https://docs.nvidia.com/deploy/nvidia-smi/index.html",
+      "scope": "Topology, affinity and device telemetry"
+    },
+    {
+      "id": "alibaba-ppu-sdk",
+      "publisher": "Alibaba Cloud",
+      "title": "真武 PPU SDK快速入门",
+      "url": "https://help.aliyun.com/zh/document_detail/3030340.html",
+      "scope": "ppu-smi, PPU SDK and environment discovery; exact target SKU/SDK unconfirmed"
+    },
+    {
+      "id": "cambricon-cndev",
+      "publisher": "Cambricon",
+      "title": "CNDev 开发者手册",
+      "url": "https://developer.cambricon.com/index/document/details/classid/7/cid/31/id/590.html",
+      "scope": "Official manual entry; full SDK access and ABI not verified"
+    },
+    {
+      "id": "thead-sail",
+      "publisher": "T-Head",
+      "title": "T-Head SAIL SDK developer center",
+      "url": "https://developer.t-head.cn/",
+      "scope": "User-selected primary PPU source; official search index identifies SAIL SDK, KMD ECC/XID references and interconnect docs. Specific management API signatures not yet retrieved."
+    }
   ]
 }
