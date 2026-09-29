@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omnismi"
-version = "2.0.0"
+version = "2.1.0.dev0"
 description = "Cross-vendor accelerator observability and structured diagnostics for AI agents and Python apps"
 keywords = ["gpu", "tpu", "ppu", "mlu", "accelerator", "cross-vendor", "nvidia", "amd", "google", "alibaba", "cambricon", "observability", "ai-agent"]
 readme = "README.md"
@@ -26,6 +26,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+selftest = ["numpy>=1.24"]
 all = [
     "nvidia-ml-py>=11.525.84",
     "amdsmi>=6.0.0",
@@ -41,6 +42,7 @@ tpu = [
     "libtpu>=0.0.37",
 ]
 dev = [
+    "numpy>=1.24",
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "mypy>=1.8",

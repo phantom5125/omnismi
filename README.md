@@ -17,6 +17,12 @@ performance with recorded baselines, and discover topology and affinity.
 **Start here:** [Quickstart](docs/quickstart.md) · [中文上手指南](docs/quickstart.zh-CN.md) ·
 [Hardware compatibility](docs/compatibility.md) · [2.0 delivery status](docs/v2/STATUS.md)
 
+**2.1 development preview:** this branch adds opt-in CPU-reference operator
+self-tests, including independent topk checks and interleaved load testing.
+See the [2.1 guide and coverage limits](docs/v2.1/hardware-selftest.md).
+This preview does not certify every physical unit; PPU SDC execution is pending.
+The commands below still describe the published **2.0.0** release.
+
 ## Install 2.0.0
 
 Version 2.0.0 includes the Python API, CLI, offline diagnosis, perf-doctor,

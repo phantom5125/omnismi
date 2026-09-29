@@ -1,5 +1,10 @@
 # Roadmap
 
+The active 2.1 work is the [hardware self-test development preview](v2.1/hardware-selftest.md):
+CPU-reference correctness checks, independent topk coverage, load-conditioned
+checks, and vendor-native execution/unit coverage. The following 1.x sections
+are retained as historical planning context.
+
 Omnismi `1.x` keeps the Python API small and stable while growing the surrounding
 tooling that makes the library easier to trust, diagnose, and operationalize.
 

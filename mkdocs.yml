@@ -24,6 +24,7 @@ nav:
       - Alibaba PPU: v2/alibaba-ppu.md
       - Cambricon MLU: v2/cambricon.md
   - Validation: validation.md
+  - "2.1 hardware self-test (preview)": v2.1/hardware-selftest.md
   - Roadmap: roadmap.md
   - Development: development.md
   - Releasing: releasing.md

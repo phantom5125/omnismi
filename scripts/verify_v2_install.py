@@ -32,6 +32,7 @@ with tempfile.TemporaryDirectory() as temporary:
         "sail-build",
         "bench matmul",
         "bench suite",
+        "self-test",
     ):
         result = subprocess.run(
             [sys.executable, "-m", "omnismi", *command.split(), "--help"],
@@ -42,6 +43,16 @@ with tempfile.TemporaryDirectory() as temporary:
             timeout=10,
         )
         assert result.returncode == 0, (command, result.stderr)
+    result = subprocess.run(
+        [sys.executable, "-m", "omnismi", "self-test", "--plan", "--vendor", "nvidia"],
+        cwd=temporary,
+        env=environment,
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["executed"] is False
     result = subprocess.run(
         [sys.executable, "-m", "omnismi", "diagnose", "--input", "-"],
         input="[ 1.0] NVRM: Xid (PCI:0000:03:00): 48, observed error\n",
@@ -55,4 +66,7 @@ with tempfile.TemporaryDirectory() as temporary:
     assert (
         json.loads(result.stdout)["scope"]["current_hardware_health"] == "INCONCLUSIVE"
     )
-print("Installed wheel: catalog, native sources and eight CLI entry points passed")
+print(
+    "Installed wheel: catalog, native sources, nine CLI entry points "
+    "and self-test plan passed"
+)

@@ -2,7 +2,7 @@ name: V2 software validation
 on:
   pull_request:
   push:
-    branches: ["main", "codex/v2-*"]
+    branches: ["main", "codex/v2-*", "codex/v2.1-*"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -62,9 +62,25 @@ jobs:
           cache-dependency-path: pyproject.toml
       - run: python -m pip install '.[docs]' ruff
       - run: ruff check scripts/verify_v2_install.py scripts/verify_quickstart.py
+      - run: ruff check src/omnismi/selftest tests/test_selftest*.py
       - run: python -m mkdocs build --strict
       - uses: actions/upload-artifact@v4
         with:
           name: documentation-preview
           path: site/
           retention-days: 14
+  cpu-framework-contracts:
+    name: Self-test framework contracts (CPU only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install '.[dev]' jax
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pytest -q tests/test_selftest_frameworks.py
+        env:
+          PYTHONPATH: src
