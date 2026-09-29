@@ -8,15 +8,18 @@ tested starting point. Linux is required for live sysfs topology and SDK builds.
 
 ## Install 2.0.0
 
-Install the package in a fresh virtual environment:
+PyPI publishing is awaiting publisher configuration. Install the released GitHub
+wheel in a fresh virtual environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade 'omnismi==2.0.0'
+python -m pip install --upgrade 'https://github.com/phantom5125/omnismi/releases/download/release-2.0.0/omnismi-2.0.0-py3-none-any.whl'
 ```
 
-The core package has no mandatory vendor dependencies. To use the example files
+After PyPI publication, `python -m pip install --upgrade 'omnismi==2.0.0'`
+installs the same release. The core package has no mandatory vendor dependencies.
+To use the example files
 later in this guide, clone the matching release and run those commands from its root:
 
 ```bash

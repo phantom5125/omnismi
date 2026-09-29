@@ -24,6 +24,9 @@ topology, and optional PPU and Cambricon adapters. See the [changelog](CHANGELOG
 for migration notes and the [release](https://github.com/phantom5125/omnismi/releases/tag/release-2.0.0)
 for wheel and source downloads.
 
+**PyPI publishing is awaiting publisher configuration.** Install the released
+wheel directly from GitHub for now; it is the same package prepared for PyPI.
+
 ## First result without a GPU
 
 On Linux or macOS with Python 3.9+:
@@ -31,10 +34,12 @@ On Linux or macOS with Python 3.9+:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade 'omnismi==2.0.0'
+python -m pip install --upgrade 'https://github.com/phantom5125/omnismi/releases/download/release-2.0.0/omnismi-2.0.0-py3-none-any.whl'
 ```
 
 From a source checkout, install `.` in the virtual environment instead.
+After PyPI publication, `python -m pip install --upgrade 'omnismi==2.0.0'`
+installs the same release by name.
 Core has no mandatory vendor dependency. Python 3.12 is a tested
 starting point; hardware collection and SDK builds target Linux.
 
@@ -52,6 +57,10 @@ for sample logs, an 80% performance comparison and exit-code handling.
 ## Read a real device
 
 Choose the dependency for the hardware you already have:
+
+While PyPI publication is pending, use the release wheel URL with extras, for
+example `python -m pip install 'omnismi[nvidia] @ https://github.com/phantom5125/omnismi/releases/download/release-2.0.0/omnismi-2.0.0-py3-none-any.whl'`.
+The package-name commands below apply after PyPI publication.
 
 | Hardware | Setup | Read-only query |
 |---|---|---|

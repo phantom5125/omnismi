@@ -16,8 +16,9 @@ baselines, and discover topology and affinity through structured agent commands.
 - [Compatibility](compatibility.md): distinguish adapter availability from validated hardware.
 - [2.0 delivery status](v2/STATUS.md): implemented workflows and remaining evidence.
 
-Install version 2.0.0 with `python -m pip install --upgrade 'omnismi==2.0.0'`.
-Release downloads are available on [GitHub](https://github.com/phantom5125/omnismi/releases/tag/release-2.0.0).
+Version 2.0.0 is available on [GitHub](https://github.com/phantom5125/omnismi/releases/tag/release-2.0.0).
+PyPI publishing is awaiting publisher configuration; the [quickstart](quickstart.md)
+currently installs the release wheel directly.
 
 ## Python API
 
