@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-03-12",
+  "updated_at": "2026-04-24",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -1036,14 +1036,57 @@
     {
       "id": "backend-diagnostics",
       "area": "roadmap",
-      "status": "planned",
+      "status": "verified",
       "title": "Improve backend diagnostics and debug visibility",
-      "description": "Add more explicit diagnostics for import failures, partial metric availability, and environment drift without weakening graceful defaults.",
+      "description": "Add more explicit diagnostics for import failures, partial metric availability, and environment drift without weakening graceful defaults, while keeping the terminal output readable and color-aware.",
       "verification": [
-        "Add tests/docs for the new diagnostics surface."
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi doctor --color always"
       ],
       "source_of_truth": [
+        "src/omnismi/cli.py",
+        "tests/test_cli_overview.py",
+        "docs/cli.md",
         "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "cli-overview",
+      "area": "roadmap",
+      "status": "verified",
+      "title": "Add a default cross-vendor machine overview CLI",
+      "description": "Make `omnismi` return a modern machine summary similar in spirit to vendor SMI tools while keeping the default view human-first, portable, concise, automation-friendly, color-aware, and stable on dense multi-GPU nodes.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi --color always"
+      ],
+      "source_of_truth": [
+        "src/omnismi/cli.py",
+        "src/omnismi/__main__.py",
+        "tests/test_cli_overview.py",
+        "pyproject.toml",
+        "docs/cli.md",
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "environment-discovery-parity",
+      "area": "roadmap",
+      "status": "verified",
+      "title": "Match runtime-visible devices on hosts, containers, and Kubernetes GPU pods",
+      "description": "For supported GPU vendors, Omnismi discovery should aim to reflect the visible logical device set of the current execution environment, including GPU containers and device-plugin-managed pods, and explain mismatches through diagnostics.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi --wide --no-color",
+        "PYTHONPATH=src python -m omnismi doctor --no-color"
+      ],
+      "source_of_truth": [
+        "src/omnismi/cli.py",
+        "tests/test_cli_overview.py",
+        "docs/cli.md",
+        "docs/compatibility.md",
         "app_spec.txt"
       ]
     },
@@ -1059,6 +1102,66 @@
       "source_of_truth": [
         "docs/roadmap.md",
         "docs/validation.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "machine-profile-report",
+      "area": "roadmap",
+      "status": "implemented",
+      "title": "Add a normalized machine profile and spec report surface",
+      "description": "Expose a CLI-first report that combines detected accelerator inventory with curated architecture-profile metadata such as capacity, bandwidth class, and peak throughput hints.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi validate-spec --profile h100-pcie-80gb -o json"
+      ],
+      "source_of_truth": [
+        "src/omnismi/profiles.py",
+        "src/omnismi/cli.py",
+        "tests/test_cli_overview.py",
+        "docs/cli.md",
+        "docs/validation.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "hardware-spec-validation-cli",
+      "area": "roadmap",
+      "status": "implemented",
+      "title": "Validate expected hardware specs against detected and measured signals",
+      "description": "Add a vendor-agnostic CLI workflow that compares expected SKU or profile assumptions against detected memory, runtime state, and benchmark evidence, then emits PASS/WARN/FAIL style outcomes.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "PYTHONPATH=src python -m omnismi validate-spec --profile h100-pcie-80gb --no-color",
+        "PYTHONPATH=src python -m omnismi validate-spec --profile unknown-sku --no-color"
+      ],
+      "source_of_truth": [
+        "src/omnismi/cli.py",
+        "src/omnismi/profiles.py",
+        "tests/test_cli_overview.py",
+        "docs/cli.md",
+        "docs/validation.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "benchmark-cli",
+      "area": "roadmap",
+      "status": "implemented",
+      "title": "Add portable CLI benchmarks for bandwidth and compute sanity checks",
+      "description": "Provide compact, reproducible benchmark probes that can measure sustained memory bandwidth, allocation pressure, and basic compute throughput without depending on vendor sample suites, with `table`, `json`, and `yaml` outputs sharing one report schema.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_bench.py",
+        "PYTHONPATH=src python -m omnismi bench bandwidth --no-color",
+        "PYTHONPATH=src python -m omnismi bench bandwidth -o json"
+      ],
+      "source_of_truth": [
+        "src/omnismi/bench.py",
+        "src/omnismi/cli.py",
+        "tests/test_cli_bench.py",
+        "docs/bench.md",
+        "docs/cli.md",
+        "docs/roadmap.md",
         "app_spec.txt"
       ]
     },

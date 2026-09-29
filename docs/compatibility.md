@@ -20,6 +20,54 @@ Omnismi normalizes values but does not hide platform/runtime constraints.
 | Windows | Experimental | No official v1.x guarantee |
 | macOS | Experimental | No official v1.x guarantee |
 
+## Environment support goals
+
+Omnismi aims to work not only on bare hosts, but also in the execution contexts
+where accelerators are commonly consumed by applications and agents.
+
+| Execution context | Goal | Notes |
+|---|---|---|
+| Supported GPU host | First-class | Primary validation path |
+| Supported GPU container | First-class | Must reflect the container-visible device set |
+| Kubernetes GPU pod / device-plugin environment | First-class | Must behave like the current pod sees, not like the whole host |
+| CPU-only host or container | Safe empty result | No-device output is valid and should not be treated as a failure |
+
+### Discovery parity expectation
+
+For supported GPU vendors, Omnismi discovery should aim to match the visible
+logical device set of the current execution environment.
+
+In practice, this means:
+
+- if the current container only sees a subset of host GPUs, Omnismi should only report that subset
+- if the runtime can use a visible GPU, Omnismi should aim to surface it in the discovery layer
+- if runtime visibility filters such as `CUDA_VISIBLE_DEVICES`, `NVIDIA_VISIBLE_DEVICES`, `HIP_VISIBLE_DEVICES`, or `ROCR_VISIBLE_DEVICES` are active, Omnismi should treat the process as runtime-scoped and report only that filtered set
+- if PyTorch can enumerate visible GPUs in the current environment, Omnismi should aim to expose the same visible logical device set for the corresponding supported vendor
+
+When Omnismi cannot match that expectation, the preferred behavior is to report
+the mismatch explicitly through diagnostics rather than silently returning
+misleading host-global data.
+
+### Visibility controls and runtime scoping
+
+Discovery and diagnostics should surface the active runtime-visibility controls
+that shape what the current process can see.
+
+Current examples include:
+
+- `CUDA_VISIBLE_DEVICES`
+- `NVIDIA_VISIBLE_DEVICES`
+- `HIP_VISIBLE_DEVICES`
+- `ROCR_VISIBLE_DEVICES`
+- `GPU_DEVICE_ORDINAL`
+- `TPU_VISIBLE_DEVICES`
+- `TPU_VISIBLE_CHIPS`
+
+These should be treated as execution-context metadata, not as hidden global
+state. In other words, `omnismi --wide` and `omnismi doctor` should make it
+clear when a container, pod, or environment variable is intentionally scoping
+visible accelerators.
+
 ## Vendor/runtime matrix (v1 baseline)
 
 | Vendor | Runtime/Driver | Architecture families | Tier |
@@ -42,12 +90,12 @@ Omnismi normalizes values but does not hide platform/runtime constraints.
 
 | Vendor | Model | Driver/Runtime Version | Ground Truth Library Version | Omnismi Version | Status | Evidence | Failure Cause |
 |---|---|---|---|---|
-| NVIDIA | H20 | CUDA/NVML-compatible stack (validated) | `nvidia-ml-py` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](../CHANGELOG.md#100---2026-02-25) | - |
+| NVIDIA | H20 | CUDA/NVML-compatible stack (validated) | `nvidia-ml-py` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](https://github.com/phantom5125/omnismi/blob/main/CHANGELOG.md#100---2026-02-25) | - |
 | NVIDIA | H100 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | H200 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | B200 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | RTX 4090 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
-| AMD | MI300X | ROCm/amdsmi-compatible stack (validated) | `amdsmi` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](../CHANGELOG.md#100---2026-02-25) | - |
+| AMD | MI300X | ROCm/amdsmi-compatible stack (validated) | `amdsmi` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](https://github.com/phantom5125/omnismi/blob/main/CHANGELOG.md#100---2026-02-25) | - |
 | AMD | MI250 | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | AMD | MI300A | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | AMD | MI325X | TBD (awaiting user report) | `amdsmi` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
@@ -58,7 +106,7 @@ Omnismi normalizes values but does not hide platform/runtime constraints.
 ## Contributing validation evidence
 
 Community validation is welcome. If you validate a model, submit evidence and we can promote it from
-`🧪 Awaiting User Validation` to `✅ Verified`. See [CONTRIBUTING.md](../CONTRIBUTING.md) for
+`🧪 Awaiting User Validation` to `✅ Verified`. See [CONTRIBUTING.md](https://github.com/phantom5125/omnismi/blob/main/CONTRIBUTING.md) for
 the required evidence template.
 
 ## Notes
@@ -66,3 +114,25 @@ the required evidence template.
 - Metric availability varies by device, firmware, and permission model.
 - Any unavailable metric is returned as `None` instead of raising by default.
 - Unit normalization target is fixed: bytes, percent, Celsius, Watts, MHz.
+
+## 2.0: Alibaba PPU
+
+The experimental `alibaba` backend uses the official SAIL PPU-SMI CSV interface.
+It supports physical inventory, memory and documented telemetry, with no Python
+vendor dependency. Fixtures pass; no PPU hardware/model is marked verified.
+See [adapter scope](v2/alibaba-ppu.md) for visibility and capability limitations.
+
+## 2.0 runtime capabilities
+
+Version 2.0 adds SAIL PPU identity/memory/utilization/
+temperature/power/clocks, and a CNDEV SDK-compiled Cambricon collector for the same
+normalized fields. Both are **🧪 Awaiting User Validation**, not verified models.
+Their management view may differ from process-runtime/MIG/MIM visibility.
+
+Active bounded probes use NVIDIA/AMD torch, modern torch_mlu or an SDK-compiled
+native SAIL HGGC probe (`omnismi sail-build`). SAIL runtime identity is obtained
+from HGGC directly. Local synthetic-runtime tests do not certify the real SDK
+compiler, ABI or any PPU/MLU model; target-host validation remains required.
+Live vendor topology covers NVIDIA NVLink/MIG and PPU ICN; generic Linux PCI/NUMA/
+NIC/RDMA discovery is vendor independent. Read [the current status](v2/STATUS.md)
+for precise limitations and [Cambricon setup](v2/cambricon.md) for SDK compilation.

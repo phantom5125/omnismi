@@ -1,14 +1,18 @@
 """Backend implementations for supported accelerator vendors."""
 
+from omnismi.backends.alibaba_ppu import AlibabaPpuBackend
 from omnismi.backends.amd import AmdBackend
 from omnismi.backends.base import BaseBackend
+from omnismi.backends.cambricon import CambriconBackend
 from omnismi.backends.google_tpu import GoogleTpuBackend
 from omnismi.backends.nvidia import NvidiaBackend
 from omnismi.backends.registry import active_backends, close_all, registered_backends
 
 __all__ = [
     "AmdBackend",
+    "AlibabaPpuBackend",
     "BaseBackend",
+    "CambriconBackend",
     "GoogleTpuBackend",
     "NvidiaBackend",
     "active_backends",
