@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "omnismi"
 version = "2.1.0.dev0"
-description = "Cross-vendor accelerator observability and structured diagnostics for AI agents and Python apps"
+description = "Cross-vendor accelerator inspection, diagnostics and validation for people and AI agents"
 keywords = ["gpu", "tpu", "ppu", "mlu", "accelerator", "cross-vendor", "nvidia", "amd", "google", "alibaba", "cambricon", "observability", "ai-agent"]
 readme = "README.md"
 license = {text = "MIT"}

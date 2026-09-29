@@ -2,6 +2,12 @@
 
 ## Architecture
 
+The product is the Omnismi tool: CLI, structured reports and optional Python
+integration. See [product direction](why-omnismi.md) for scope and compatibility.
+
+- `omnismi.cli` and command modules: user/agent entry points
+- `omnismi.diagnostics`, performance and topology modules: normalized evidence and findings
+- `omnismi.selftest`: planned cases, CPU oracle, isolated execution and coverage reports
 - `omnismi.api`: public API objects and functions
 - `omnismi.models`: stable public dataclasses
 - `omnismi.backends`: vendor implementations and registry
@@ -10,7 +16,7 @@
 
 ## Coding standards
 
-- Keep the public API minimal and stable.
+- Keep the existing Python API minimal and stable; new tool workflows may extend CLI/report/worker contracts.
 - Avoid `get_*` naming for read-only data retrieval.
 - Backend failures must degrade gracefully (return partial metrics).
 - Do not leak raw vendor exceptions to default user flow.

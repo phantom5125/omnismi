@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-04-24",
+  "updated_at": "2026-09-30",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -1177,6 +1177,93 @@
       "source_of_truth": [
         "docs/roadmap.md",
         "app_spec.txt"
+      ]
+    },
+    {
+      "id": "product-tool-positioning",
+      "area": "product",
+      "status": "verified",
+      "title": "Tool-first product direction for people and agents",
+      "description": "The product is cross-vendor accelerator tooling with CLI/report contracts and optional Python integration; scope complements compute frameworks.",
+      "verification": [
+        "python -m mkdocs build --strict",
+        "python scripts/verify_quickstart.py"
+      ],
+      "source_of_truth": [
+        "app_spec.txt",
+        "README.md",
+        "docs/why-omnismi.md",
+        "docs/roadmap.md"
+      ]
+    },
+    {
+      "id": "cli-diagnostic-human-reports",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Human summaries for diagnostic and self-test workflows",
+      "description": "Render findings, next steps and coverage from the same reports used by agents; newer commands currently primarily return JSON.",
+      "verification": [
+        "Implement renderers and test parity with structured report conclusions."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "docs/why-omnismi.md"
+      ]
+    },
+    {
+      "id": "agent-capability-discovery",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Machine-readable workflow and backend capabilities",
+      "description": "Expose prerequisites, supported checks and unavailable reasons without trial-running workloads or reparsing vendor manuals.",
+      "verification": [
+        "Implement capability discovery and cross-vendor contract fixtures."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "portable-report-and-device-contracts",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Versioned reports and resolved device identities",
+      "description": "Document schema compatibility, units, provenance, visibility and failure semantics; preserve management/runtime index differences and unknown capability outcomes.",
+      "verification": [
+        "Validate a shared client against multiple vendor reports and unavailable capability fixtures."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "docs/why-omnismi.md"
+      ]
+    },
+    {
+      "id": "tool-distribution-integrations",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Evaluate easier CLI distribution and optional integrations",
+      "description": "Evaluate standalone/container distribution and SDK/MCP wrappers around existing report contracts. No standalone binary or MCP server currently ships.",
+      "verification": [
+        "Select and validate deployment targets before documenting installation or integration availability."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md"
+      ]
+    },
+    {
+      "id": "v21-cpu-reference-selftest",
+      "area": "validation",
+      "status": "awaiting_validation",
+      "title": "CPU-reference operator self-tests for silent errors",
+      "description": "The 2.1 preview implements topk and other operator checks, bounded workers, evidence artifacts and interleaved load. Software tests passed; target-card validation, PPU SDC execution and physical-unit coverage remain incomplete.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_selftest.py tests/test_selftest_frameworks.py",
+        "Collect target-card reports using docs/v2.1/hardware-selftest.md."
+      ],
+      "source_of_truth": [
+        "src/omnismi/selftest",
+        "docs/v2.1/hardware-selftest.md"
       ]
     }
   ]

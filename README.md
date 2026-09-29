@@ -10,9 +10,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/phantom5125/omnismi)](https://github.com/phantom5125/omnismi/releases/latest)
 
-Cross-vendor accelerator observability and structured diagnostics for Python apps
-and AI agents. Read normalized metrics, explain error evidence offline, compare
-performance with recorded baselines, and discover topology and affinity.
+**A cross-vendor accelerator tool for people and AI agents.** Inspect devices,
+explain errors, check performance, discover topology and test correctness through
+consistent commands and structured reports. Reuse your inspection and validation
+workflows across supported hardware; Omnismi handles vendor-specific collection
+and execution adapters. The Python API is an integration option.
+
+Omnismi complements compute frameworks by focusing on hardware visibility,
+readiness and diagnostic evidence. See [product direction and framework boundaries](docs/why-omnismi.md)
+for what cross-hardware portability means and which capabilities are still planned.
 
 **Start here:** [Quickstart](docs/quickstart.md) · [中文上手指南](docs/quickstart.zh-CN.md) ·
 [Hardware compatibility](docs/compatibility.md) · [2.0 delivery status](docs/v2/STATUS.md)

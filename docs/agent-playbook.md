@@ -2,6 +2,18 @@
 
 This file defines contribution guardrails for autonomous agents.
 
+## Product direction
+
+Omnismi is a cross-vendor accelerator tool for people and agents. The CLI and
+structured reports are primary interfaces; the existing Python API remains
+compatible. Read [product direction](why-omnismi.md) before expanding scope.
+
+Prefer features that let callers reuse discovery, diagnosis, performance,
+topology and validation workflows across hardware. Reuse PyTorch/JAX/vendor SDKs
+for computation. General tensor APIs, autograd and model migration are outside
+the tool's scope. Distinguish implemented adapters, planned capabilities and
+real hardware validation in every user-facing claim.
+
 ## Long-running harness files
 
 - `app_spec.txt`: root source of truth for product goals, invariants, and non-goals.
@@ -19,6 +31,8 @@ Preferred session loop:
 
 ## Fixed entrypoints
 
+- Tool: `omnismi` / `python -m omnismi`; see [CLI contracts](cli.md).
+- Reports: command-specific structured output, evidence and explicit coverage limits.
 - Public API: `omnismi.count`, `omnismi.gpus`, `omnismi.gpu`
 - GPU object methods: `GPU.info`, `GPU.metrics`
 - Validation command: `python -m omnismi.validation.parity`
@@ -29,6 +43,9 @@ Preferred session loop:
 - Keep unavailable metrics as `None`, not exceptions.
 - Do not add `get_*` names to public API.
 - Do not reintroduce runtime dependency installers.
+- Keep plans and offline commands usable without a compute framework.
+- Derive human summaries and machine output from the same diagnostic evidence.
+- Preserve report compatibility and explicit unsupported/unknown outcomes.
 
 ## Change checklist
 
@@ -37,7 +54,7 @@ Preferred session loop:
 - Update `feature_list.json` if a feature status or verification path changes.
 - Append a short dated note to `claude-progress.txt` at the end of the session.
 - Verify no stale references to removed 0.x API names remain.
-- Run `PYTHONPATH=src pytest -q` before finalizing.
+- Run relevant tests for behavioral changes; use strict docs/example checks for documentation-only changes.
 
 ## Backend implementation checklist
 

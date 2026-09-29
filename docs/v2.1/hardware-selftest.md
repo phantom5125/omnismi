@@ -4,6 +4,17 @@
 `codex/v2.1-hardware-selftest`。2.0 的 `diagnose --self-test` 保持原有有界探测；
 本页介绍新的 `omnismi self-test` CPU 参考比对流程。
 
+## 产品边界
+
+自检是 Omnismi 工具的一项跨厂商工作流。用户和 agent 使用相同的测试计划、
+结果语义和证据，不必自己维护多套厂商诊断脚本。Python API 是集成入口之一，
+当前使用 Python 分发也不要求用户编写 Python 程序。
+
+PyTorch、JAX 和厂商 SDK 是计算执行后端；Omnismi 负责用例、独立参考、超时、
+复现材料及覆盖结论。原生内核用于取得诊断所需的硬件证据，不扩展为通用张量框架。
+详见[产品定位](../why-omnismi.md)和[路线图](../roadmap.md)。
+当前自检输出为 JSON；面向人的摘要和统一能力发现仍是待实现的工具接口。
+
 目标是发现没有伴随 XID/RAS 的错误计算，包括特定算子触发、重复运行才出现、
 或负载变化时出现的异常。项目 owner 提供过 Blackwell 上 sort 正常而 topk
 暴露异常的案例，但原始参数已不可用；本项目将它作为测试设计动机，

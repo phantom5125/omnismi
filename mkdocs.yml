@@ -1,5 +1,5 @@
 site_name: Omnismi
-site_description: Cross-vendor GPU observability for AI agents and Python apps
+site_description: Cross-vendor accelerator inspection, diagnostics and validation for people and AI agents
 repo_url: https://github.com/phantom5125/omnismi
 edit_uri: edit/main/docs/
 theme:
@@ -10,7 +10,7 @@ nav:
   - Home: index.md
   - Quickstart: quickstart.md
   - 中文上手指南: quickstart.zh-CN.md
-  - Why Omnismi: why-omnismi.md
+  - Product direction: why-omnismi.md
   - API: api.md
   - CLI: cli.md
   - Bench: bench.md
