@@ -6,6 +6,7 @@ import argparse
 import json
 
 from .catalog import OPERATORS, VENDORS, Config, plan
+from .targets import target_catalog, target_profile
 
 
 def run(argv):
@@ -25,7 +26,12 @@ def run(argv):
         action="store_true",
         help="Execute workloads on the selected accelerator.",
     )
-    parser.add_argument("--vendor", required=True, choices=VENDORS)
+    parser.add_argument("--vendor", choices=VENDORS)
+    parser.add_argument(
+        "--target",
+        choices=[item["id"] for item in target_catalog()["targets"]],
+        help="Reviewed model preset; verifies runtime model before execution.",
+    )
     parser.add_argument(
         "--device",
         type=int,
@@ -61,6 +67,10 @@ def run(argv):
     args.pop("run")
     args["operators"] = tuple(args["operators"].split(","))
     try:
+        if args["target"] and args["vendor"] is None:
+            args["vendor"] = target_profile(args["target"])["vendor"]
+        if args["vendor"] is None:
+            raise ValueError("provide --vendor or --target")
         config = Config(**args)
         config.validate()
         if planning:

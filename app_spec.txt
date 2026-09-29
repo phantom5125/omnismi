@@ -80,6 +80,10 @@ Environment compatibility goals
   Omnismi should aim to expose the same visible logical device set in the
   discovery layer, or explain mismatches clearly through diagnostics.
 
+Dashboard preview
+- `omnismi dashboard` serves a bundled local-only report viewer and guided command builder. Humans and agents use the same hardware_selftest schema. No HTTP workload execution.
+- RTX 5090, B300, MI355X and TPU v6e presets are implemented, with runtime model guards and pending real-card validation.
+
 Planned frontier
 - Validate the 2.1 CPU-reference suite on target cards; add native unit observations, power-conditioned checks and the PPU SAIL SDC worker.
 - Complete concise human output for diagnostic workflows, rendered from the same report consumed by agents.

@@ -23,8 +23,14 @@ class Config:
     require_unit_coverage: bool = False
     power_target_w: float | None = None
     artifact_dir: str | None = None
+    target: str | None = None
 
     def validate(self):
+        if self.target:
+            from .targets import target_profile
+
+            if target_profile(self.target)["vendor"] != self.vendor:
+                raise ValueError("target and vendor do not match")
         if self.vendor not in VENDORS or self.profile not in (
             "smoke",
             "extended",
@@ -110,7 +116,12 @@ def cases(config: Config) -> list[Case]:
                 layout=layout,
             )
     if config.profile in ("extended", "soak"):
-        for dtype in ("float32", "float16", "bfloat16", "int32"):
+        dtypes = ("float32", "float16", "bfloat16", "int32")
+        if config.target:
+            from .targets import target_profile
+
+            dtypes = target_profile(config.target)["dtypes"]
+        for dtype in dtypes:
             for op in config.operators:
                 if op == "topk":
                     for width in (31, 32, 33, 1023, 1024, 1025, 4097):
@@ -149,7 +160,7 @@ def plan(config: Config) -> dict:
     from omnismi import __version__
 
     selected = cases(config)
-    return {
+    report = {
         "schema_version": 1,
         "report_type": "hardware_selftest",
         "tool_version": __version__,
@@ -184,3 +195,8 @@ def plan(config: Config) -> dict:
             "independent validation.",
         ],
     }
+    if config.target:
+        from .targets import target_profile
+
+        report["target"] = target_profile(config.target)
+    return report

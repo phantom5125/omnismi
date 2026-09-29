@@ -1,0 +1,21 @@
+{
+  "name": "omnismi-dashboard",
+  "version": "2.1.0-dev.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "test": "node --test src/*.test.js"
+  },
+  "dependencies": {
+    "lucide-react": "1.48.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "prettier": "3.9.9",
+    "vite": "8.3.1"
+  }
+}

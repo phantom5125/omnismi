@@ -1915,6 +1915,11 @@ def _run_bench(args: argparse.Namespace, argv: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
 
+    if raw_args and raw_args[0] == "dashboard":
+        from omnismi.dashboard.server import run
+
+        return run(raw_args[1:])
+
     if raw_args and raw_args[0] == "self-test":
         from omnismi.selftest.cli import run
 

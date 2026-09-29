@@ -40,6 +40,19 @@ def execute(config, checkpoint, *, backend=None, sampler=None):
         checkpoint(report)
         return report
     report["identity"] = backend.identity
+    if config.target:
+        from .targets import matches_target
+
+        if not matches_target(config.target, backend.identity):
+            report["errors"].append(
+                {
+                    "reason": "target_device_mismatch",
+                    "detail": "Runtime device does not match requested target; "
+                    "no cases executed.",
+                }
+            )
+            checkpoint(report)
+            return report
     report["coverage"]["physical_units"]["expected_count"] = backend.identity.get(
         "multiprocessor_count"
     )
@@ -159,7 +172,12 @@ def execute(config, checkpoint, *, backend=None, sampler=None):
             # Large dense GEMMs, each downloaded and checked. CPU comparison and
             # topk rechecks introduce gaps; sustained power must be observed.
             side = max(256, min(2048, int(math.sqrt(budget / 64)) // 256 * 256))
-            load = Case("9000-matmul-load", "matmul", (side, side), dtype="float16")
+            load_dtype = "float16"
+            if config.target:
+                from .targets import target_profile
+
+                load_dtype = target_profile(config.target)["load_dtype"]
+            load = Case("9000-matmul-load", "matmul", (side, side), dtype=load_dtype)
             a, b = inputs(load, config.seed)
             reference = expected(load, a, b)
             cached = (a, b, reference, config.seed)

@@ -24,7 +24,9 @@ for what cross-hardware portability means and which capabilities are still plann
 [Hardware compatibility](docs/compatibility.md) · [2.0 delivery status](docs/v2/STATUS.md)
 
 **2.1 development preview:** this branch adds opt-in CPU-reference operator
-self-tests, including independent topk checks and interleaved load testing.
+self-tests, including independent topk checks and interleaved load testing,
+plus a [local dashboard](docs/v2.1/dashboard.md) with guided commands and
+RTX 5090 / B300 / MI355X / TPU v6e presets (real-card validation pending).
 See the [2.1 guide and coverage limits](docs/v2.1/hardware-selftest.md).
 This preview does not certify every physical unit; PPU SDC execution is pending.
 The commands below still describe the published **2.0.0** release.
