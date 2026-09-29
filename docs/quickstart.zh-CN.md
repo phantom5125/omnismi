@@ -8,16 +8,13 @@ Python 3.12 是已经测试的起点。实时 sysfs 拓扑采集和 SDK 编译�
 
 ## 1. 安装 2.0.0
 
-PyPI 上传仍待配置发布授权。现在可以在独立的虚拟环境中安装 GitHub 正式版：
+在独立的虚拟环境中安装 PyPI 正式版：
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade 'https://github.com/phantom5125/omnismi/releases/download/release-2.0.0/omnismi-2.0.0-py3-none-any.whl'
+python -m pip install --upgrade 'omnismi==2.0.0'
 ```
-
-PyPI 上传完成后，也可以通过 `python -m pip install --upgrade 'omnismi==2.0.0'`
-安装同一版本。
 
 后面的日志和性能示例使用仓库附带的文件。需要运行这些示例时，下载对应
 版本的源码，并在项目根目录执行命令：
