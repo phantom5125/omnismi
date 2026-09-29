@@ -1,11 +1,11 @@
 # 2.0 implementation and validation status
 
-Updated 2026-09-22. The second implementation is on `codex/v2-runtime-completion`,
-based on the combined `codex/v2-preview`. It closes the initial offline-only and
-research-only paths with explicit workloads, live collectors, a CNDEV adapter and
-native SDK-compiled SAIL probes.
-The package version is still 1.0.0 on development branches; nothing was published
-as a 2.0 release. Hardware certification remains a separate evidence requirement.
+Updated 2026-09-30 for **2.0.0**. The integrated release includes explicit workloads,
+live collectors, a CNDEV adapter and native SDK-compiled SAIL probes alongside
+offline diagnosis, performance baselines and topology discovery.
+The maintainer reports functional validation outside this repository. Detailed
+model/driver/SDK results have not been added to the public evidence matrix, so this
+release does not assign new model-specific certification labels.
 
 | Capability | Implemented | Operating boundary |
 |---|---|---|
@@ -79,7 +79,7 @@ and the SAIL worker's host-control code compiled with CPU stand-ins for the
 runtime and kernels. These tests check protocols, resource limits and failure
 handling; they do not certify real vendor compilation, ABI or hardware.
 
-Still required for a hardware-validated 2.0 release:
+Public evidence and follow-up work:
 
 1. Linux accelerator hosts with matching SDK/driver installations for vendor
    parity, container/runtime visibility, actual live topology and workload checks.
@@ -88,12 +88,12 @@ Still required for a hardware-validated 2.0 release:
 3. Real CNDEV and HGGC builds with matching SDK headers/libraries/compiler, followed
    by card tests. Public API references and local synthetic-runtime validation
    are recorded, but do not replace these installed-SDK checks.
-4. One reviewed CLI baseline reconciling existing PR #5 and the CLI foundation;
-   version/release decisions and main-branch merging are still pending.
+4. PR #5's separate preflight admission checks remain outside 2.0.0. The release
+   uses the integrated overview/doctor CLI and structured commands described above.
 
-First-increment independent draft PRs remain [#6](https://github.com/phantom5125/omnismi/pull/6),
+The original feature proposals are [#6](https://github.com/phantom5125/omnismi/pull/6),
 [#7](https://github.com/phantom5125/omnismi/pull/7),
 [#8](https://github.com/phantom5125/omnismi/pull/8),
 [#9](https://github.com/phantom5125/omnismi/pull/9), and
-[#10](https://github.com/phantom5125/omnismi/pull/10). The current branch builds on
-their integrated snapshot rather than changing those review bases underneath them.
+[#10](https://github.com/phantom5125/omnismi/pull/10). Their integrated implementation
+is delivered through [#11](https://github.com/phantom5125/omnismi/pull/11).

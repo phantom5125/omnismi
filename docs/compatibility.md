@@ -106,7 +106,7 @@ visible accelerators.
 ## Contributing validation evidence
 
 Community validation is welcome. If you validate a model, submit evidence and we can promote it from
-`🧪 Awaiting User Validation` to `✅ Verified`. See [CONTRIBUTING.md](https://github.com/phantom5125/omnismi/blob/codex/v2-runtime-completion/CONTRIBUTING.md) for
+`🧪 Awaiting User Validation` to `✅ Verified`. See [CONTRIBUTING.md](https://github.com/phantom5125/omnismi/blob/main/CONTRIBUTING.md) for
 the required evidence template.
 
 ## Notes
@@ -115,16 +115,16 @@ the required evidence template.
 - Any unavailable metric is returned as `None` instead of raising by default.
 - Unit normalization target is fixed: bytes, percent, Celsius, Watts, MHz.
 
-## 2.0 development: Alibaba PPU
+## 2.0: Alibaba PPU
 
 The experimental `alibaba` backend uses the official SAIL PPU-SMI CSV interface.
 It supports physical inventory, memory and documented telemetry, with no Python
 vendor dependency. Fixtures pass; no PPU hardware/model is marked verified.
 See [adapter scope](v2/alibaba-ppu.md) for visibility and capability limitations.
 
-## 2.0 development runtime capabilities
+## 2.0 runtime capabilities
 
-The `codex/v2-runtime-completion` branch adds SAIL PPU identity/memory/utilization/
+Version 2.0 adds SAIL PPU identity/memory/utilization/
 temperature/power/clocks, and a CNDEV SDK-compiled Cambricon collector for the same
 normalized fields. Both are **🧪 Awaiting User Validation**, not verified models.
 Their management view may differ from process-runtime/MIG/MIM visibility.

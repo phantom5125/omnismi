@@ -1,7 +1,7 @@
 site_name: Omnismi
 site_description: Cross-vendor GPU observability for AI agents and Python apps
 repo_url: https://github.com/phantom5125/omnismi
-edit_uri: edit/codex/v2-runtime-completion/docs/
+edit_uri: edit/main/docs/
 theme:
   name: material
   logo: assets/OMNIsmi.svg
@@ -15,7 +15,7 @@ nav:
   - CLI: cli.md
   - Bench: bench.md
   - Compatibility: compatibility.md
-  - 2.0 Preview:
+  - "2.0":
       - Delivery status: v2/STATUS.md
       - Design and branches: v2/README.md
       - Diagnostics: v2/diagnostics.md
@@ -26,6 +26,7 @@ nav:
   - Validation: validation.md
   - Roadmap: roadmap.md
   - Development: development.md
+  - Releasing: releasing.md
   - Agent Playbook: agent-playbook.md
 plugins:
   - search

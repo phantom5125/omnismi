@@ -30,13 +30,12 @@ To verify the actual distribution rather than the editable checkout:
 
 ```bash
 python -m venv /tmp/omnismi-wheel-check
-/tmp/omnismi-wheel-check/bin/python -m pip install --no-deps dist/omnismi-1.0.0-py3-none-any.whl
+/tmp/omnismi-wheel-check/bin/python -m pip install --no-deps dist/omnismi-2.0.0-py3-none-any.whl
 /tmp/omnismi-wheel-check/bin/python scripts/verify_v2_install.py
 /tmp/omnismi-wheel-check/bin/python scripts/verify_quickstart.py
 ```
 
-The current development distribution still uses version 1.0.0. Use a fresh test
-environment or `--force-reinstall` after rebuilding. The quickstart checker runs
+Use a fresh test environment or `--force-reinstall` after rebuilding. The quickstart checker runs
 the tagged offline commands directly from README and both quickstart guides and
 checks verdicts, exits and the 80%/40% arithmetic. Keep those examples runnable from
 the repository root; do not add hardware workloads to the offline markers.

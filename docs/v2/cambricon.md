@@ -1,6 +1,6 @@
 # Cambricon CNDEV adapter
 
-The optional Cambricon backend is implemented on `codex/v2-runtime-completion`.
+The optional Cambricon backend is included in Omnismi 2.0.0.
 No model has been hardware-validated. The adapter uses a read-only native process,
 compiled on the target Linux machine against its installed CNDEV headers/library.
 Python never guesses the layouts of proprietary SDK structs or loads their ABI.

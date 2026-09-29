@@ -1,6 +1,6 @@
 # CLI
 
-Install the 2.0 development preview using the [quickstart](quickstart.md).
+Install Omnismi 2.0.0 using the [quickstart](quickstart.md).
 `python -m omnismi` and the `omnismi` console command invoke the same CLI.
 The small Python API remains available independently of the command-line tools.
 

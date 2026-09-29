@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from importlib.metadata import version
 from importlib.resources import files
 
 import omnismi
@@ -12,6 +13,7 @@ from omnismi.diagnostics import decode_error
 from omnismi.diagnostics.catalog import load_catalog
 
 assert "site-packages" in omnismi.__file__, "Install the wheel without PYTHONPATH first"
+assert version("omnismi") == omnismi.__version__, "Package and runtime versions differ"
 assert len(load_catalog()["rules"]) == 273
 assert files("omnismi.backends").joinpath("cndev_probe.c").is_file()
 assert files("omnismi.backends").joinpath("sail_probe.hg").is_file()

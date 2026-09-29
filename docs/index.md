@@ -4,20 +4,20 @@
   <img src="assets/OMNIsmi.svg" alt="Omnismi logo" width="300" />
 </p>
 
-Read accelerator information through one small Python API. In the 2.0 preview,
+Read accelerator information through one small Python API. In 2.0,
 explain error evidence offline, compare measured performance with recorded
 baselines, and discover topology and affinity through structured agent commands.
 
 ## Start here
 
-- [Quickstart](quickstart.md): source installation, no-GPU examples and expected results.
+- [Quickstart](quickstart.md): package installation, no-GPU examples and expected results.
 - [中文上手指南](quickstart.zh-CN.md): 安装、离线诊断、性能百分比和常见问题。
 - [CLI](cli.md): select the right command and interpret its output.
 - [Compatibility](compatibility.md): distinguish adapter availability from validated hardware.
 - [2.0 delivery status](v2/STATUS.md): implemented workflows and remaining evidence.
 
-The PyPI release is 1.0.0. Preview commands require the source branch described in
-the quickstart; they have not been published as a 2.0 package.
+Install version 2.0.0 with `python -m pip install --upgrade 'omnismi==2.0.0'`.
+Release downloads are available on [GitHub](https://github.com/phantom5125/omnismi/releases/tag/release-2.0.0).
 
 ## Python API
 

@@ -80,7 +80,7 @@ Focus: provide portable, non-vendor benchmark evidence that users can trust.
   - full profilers
   - vendor marketing or sample benchmarks
 
-## v2.0
+## After v2.0
 
 Focus: build higher-confidence performance reasoning without bloating the core API.
 

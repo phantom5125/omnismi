@@ -1,7 +1,7 @@
 # Bench
 
-The 2.0 preview implements `bench bandwidth`, `bench matmul` and `bench suite`.
-Install the preview using the [quickstart](quickstart.md). These commands execute
+Omnismi 2.0 implements `bench bandwidth`, `bench matmul` and `bench suite`.
+Install the package using the [quickstart](quickstart.md). These commands execute
 accelerator workloads; management queries alone do not start them.
 
 ## Bounded matrix probe

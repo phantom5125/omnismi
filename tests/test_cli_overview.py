@@ -169,7 +169,7 @@ def test_main_default_overview_table_output(backend_factories, monkeypatch, caps
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Omnismi v1.0.0 [Host: worker-a17] [IP: 192.168.1.50] [Uptime: 12d 4h 0m] [Status: OK]" in captured.out
+    assert "Omnismi v2.0.0 [Host: worker-a17] [IP: 192.168.1.50] [Uptime: 12d 4h 0m] [Status: OK]" in captured.out
     assert "[SYSTEM] CPU: 12% | Mem: 128.0GB/512.0GB | Driver: 550.54.15" in captured.out
     assert "[VISIBLE] Devices: 2 | Vendors: nvidia(2) | Scope: container | Torch: 2" in captured.out
     assert "NVIDIA H100 PCIe" in captured.out
@@ -291,7 +291,7 @@ def test_doctor_reports_visibility_mismatch(backend_factories, monkeypatch, caps
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Omnismi Doctor v1.0.0 [Host: worker-a17] [Scope: container] [Status: WARN]" in captured.out
+    assert "Omnismi Doctor v2.0.0 [Host: worker-a17] [Scope: container] [Status: WARN]" in captured.out
     assert "[FINDINGS]" in captured.out
     assert "[RUNTIME]" in captured.out
     assert "PyTorch reports 1 visible GPU(s), but Omnismi found 2." in captured.out
@@ -355,7 +355,7 @@ def test_validate_spec_passes_for_matching_profile(
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Omnismi Validate Spec v1.0.0" in captured.out
+    assert "Omnismi Validate Spec v2.0.0" in captured.out
     assert "[Profile: h100-pcie-80gb] [Status: PASS]" in captured.out
     assert "NVIDIA H100 PCIe" in captured.out
     assert "80.0GB / 80.0GB" in captured.out

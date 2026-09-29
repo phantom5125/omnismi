@@ -6,29 +6,34 @@
 GPU、SDK 或 PyTorch。以下安装命令适用于 Linux / macOS，要求 Python 3.9+；
 Python 3.12 是已经测试的起点。实时 sysfs 拓扑采集和 SDK 编译需要 Linux。
 
-## 1. 安装 2.0 开发预览版
+## 1. 安装 2.0.0
 
-[PyPI 上的发布版](https://pypi.org/project/omnismi/)目前是 1.0.0，不包含下面的
-预览命令。体验新功能请安装对应源码分支：
+在独立的虚拟环境中安装：
 
 ```bash
-git clone --branch codex/v2-runtime-completion --single-branch https://github.com/phantom5125/omnismi.git
-cd omnismi
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install .
+python -m pip install --upgrade 'omnismi==2.0.0'
 ```
 
-已经在这个分支的项目目录中，就从创建虚拟环境开始。后续相对路径均以项目
-根目录为准。开发包暂未修改版本号，仍显示 1.0.0，可以这样确认预览命令可用：
+后面的日志和性能示例使用仓库附带的文件。需要运行这些示例时，下载对应
+版本的源码，并在项目根目录执行命令：
+
+```bash
+git clone --branch release-2.0.0 --single-branch https://github.com/phantom5125/omnismi.git
+cd omnismi
+```
+
+也可以在这个源码目录执行 `python -m pip install .` 完成安装。
+确认诊断命令可用：
 
 <!-- quickstart-smoke: help -->
 ```bash
 python -m omnismi decode --help
 ```
 
-只需要已发布的 Python 查询 API，可以在另一个虚拟环境安装
-`omnismi`、`omnismi[nvidia]` 或 `omnismi[amd]`。这与安装预览版是两条不同路径。
+读取 NVIDIA 或 AMD 指标时，在同一环境安装 `omnismi[nvidia]==2.0.0`
+或 `omnismi[amd]==2.0.0`。原有 Python 查询 API 保持兼容。
 
 ## 2. 不用显卡，获得第一份诊断结果
 
@@ -138,7 +143,7 @@ print(report["data"]["findings"])
 | 现象 | 排查方法 |
 |---|---|
 | 找不到 `omnismi` | 激活虚拟环境，或使用安装它的解释器运行 `python -m omnismi`。 |
-| 不认识 `decode` | 检查是否安装了 PyPI 1.0.0；在当前虚拟环境安装预览分支源码。 |
+| 不认识 `decode` | 检查当前虚拟环境，并执行 `python -m pip install --upgrade 'omnismi==2.0.0'`。 |
 | 设备数为 0 / 指标为 null | 运行 `omnismi doctor`，检查后端依赖、驱动和容器权限；这不是健康判定。 |
 | 无权读取 dmesg/sysfs | 使用有权限取得的日志文件进行离线诊断；空证据不代表健康。 |
 | PPU 提示缺少原生探针 | 在 SDK 主机执行 `omnismi sail-build`，设置 `OMNISMI_SAIL_PROBE`。 |

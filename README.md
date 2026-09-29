@@ -4,11 +4,11 @@
   <img src="docs/assets/OMNIsmi.svg" alt="Omnismi logo" width="320" />
 </p>
 
-[![Preview CI](https://github.com/phantom5125/omnismi/actions/workflows/v2-checks.yml/badge.svg?branch=codex%2Fv2-runtime-completion&event=push)](https://github.com/phantom5125/omnismi/actions/workflows/v2-checks.yml?query=branch%3Acodex%2Fv2-runtime-completion)
+[![CI](https://github.com/phantom5125/omnismi/actions/workflows/v2-checks.yml/badge.svg?branch=main&event=push)](https://github.com/phantom5125/omnismi/actions/workflows/v2-checks.yml?query=branch%3Amain)
 [![PyPI release](https://img.shields.io/pypi/v/omnismi?label=PyPI%20release)](https://pypi.org/project/omnismi/)
 [![Python](https://img.shields.io/badge/Python-%3E%3D3.9-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![2.0 preview](https://img.shields.io/badge/2.0-development%20preview-orange)](docs/v2/STATUS.md)
+[![GitHub release](https://img.shields.io/github/v/release/phantom5125/omnismi)](https://github.com/phantom5125/omnismi/releases/latest)
 
 Cross-vendor accelerator observability and structured diagnostics for Python apps
 and AI agents. Read normalized metrics, explain error evidence offline, compare
@@ -17,31 +17,25 @@ performance with recorded baselines, and discover topology and affinity.
 **Start here:** [Quickstart](docs/quickstart.md) · [中文上手指南](docs/quickstart.zh-CN.md) ·
 [Hardware compatibility](docs/compatibility.md) · [2.0 delivery status](docs/v2/STATUS.md)
 
-## Choose the version
+## Install 2.0.0
 
-| Goal | Install | Available workflows |
-|---|---|---|
-| Released Python API | `python -m pip install omnismi` | The PyPI 1.0.0 API; add `nvidia` or `amd` extras for telemetry |
-| Try the 2.0 work in this repository | Clone the preview branch below and install `.` | CLI, offline diagnosis, perf-doctor, topology, PPU and Cambricon adapters |
-
-The PyPI badge describes the released package. Preview CI describes the explicit
-`codex/v2-runtime-completion` branch. The preview has **not** been published as 2.0;
-its package version is still 1.0.0. A PyPI install does not contain these new commands.
+Version 2.0.0 includes the Python API, CLI, offline diagnosis, perf-doctor,
+topology, and optional PPU and Cambricon adapters. See the [changelog](CHANGELOG.md)
+for migration notes and the [release](https://github.com/phantom5125/omnismi/releases/tag/release-2.0.0)
+for wheel and source downloads.
 
 ## First result without a GPU
 
-On Linux or macOS with Git and Python 3.9+:
+On Linux or macOS with Python 3.9+:
 
 ```bash
-git clone --branch codex/v2-runtime-completion --single-branch https://github.com/phantom5125/omnismi.git
-cd omnismi
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install .
+python -m pip install --upgrade 'omnismi==2.0.0'
 ```
 
-Already in this checkout? Create/activate the virtual environment and install `.`;
-skip the clone. Core has no mandatory vendor dependency. Python 3.12 is a tested
+From a source checkout, install `.` in the virtual environment instead.
+Core has no mandatory vendor dependency. Python 3.12 is a tested
 starting point; hardware collection and SDK builds target Linux.
 
 <!-- quickstart-smoke: decode -->
@@ -57,21 +51,21 @@ for sample logs, an 80% performance comparison and exit-code handling.
 
 ## Read a real device
 
-From the preview checkout, choose the dependency for the hardware you already have:
+Choose the dependency for the hardware you already have:
 
 | Hardware | Setup | Read-only query |
 |---|---|---|
-| NVIDIA | `python -m pip install '.[nvidia]'`; working driver | `omnismi --vendor nvidia -o json` |
-| AMD | `python -m pip install '.[amd]'`; matching ROCm/SMI stack | `omnismi --vendor amd -o json` |
-| Google TPU | `python -m pip install '.[tpu]'` on a TPU VM | `omnismi --vendor google -o json` |
+| NVIDIA | `python -m pip install 'omnismi[nvidia]==2.0.0'`; working driver | `omnismi --vendor nvidia -o json` |
+| AMD | `python -m pip install 'omnismi[amd]==2.0.0'`; matching ROCm/SMI stack | `omnismi --vendor amd -o json` |
+| Google TPU | `python -m pip install 'omnismi[tpu]==2.0.0'` on a TPU VM | `omnismi --vendor google -o json` |
 | Alibaba PPU | SAIL SDK with `ppu-smi` on PATH; [setup](docs/v2/alibaba-ppu.md) | `omnismi --vendor alibaba -o json` |
 | Cambricon MLU | Build the collector against installed CNDEV; [setup](docs/v2/cambricon.md) | `omnismi --vendor cambricon -o json` |
 
-Omnismi does not install drivers, SDKs or PyTorch. `.[all]` includes NVIDIA, AMD and
+Omnismi does not install drivers, SDKs or PyTorch. `omnismi[all]` includes NVIDIA, AMD and
 TPU Python dependencies; PPU/MLU still require their vendor setup. Missing devices
 or permissions are explained by `omnismi doctor`; unavailable metrics stay null.
 
-The small Python API works in both the released package and this preview:
+The small Python API remains compatible with 1.0:
 
 ```python
 import omnismi as omi

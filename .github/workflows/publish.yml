@@ -1,0 +1,101 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag (for example release-2.0.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pypi-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify-distributions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download the release distributions and verify checksums
+        run: |
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern '*.whl' --pattern '*.tar.gz' --pattern SHA256SUMS
+          (cd dist && sha256sum --check SHA256SUMS)
+      - name: Check version and package metadata
+        run: |
+          python -m pip install twine
+          python -m twine check dist/*.whl dist/*.tar.gz
+          python - <<'PY'
+          import os
+          import tomllib
+          import zipfile
+          from email.parser import BytesParser
+          from pathlib import Path
+
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          assert os.environ["RELEASE_TAG"] == f"release-{version}"
+          wheels = list(Path("dist").glob("*.whl"))
+          sources = list(Path("dist").glob("*.tar.gz"))
+          assert len(wheels) == len(sources) == 1
+          with zipfile.ZipFile(wheels[0]) as wheel:
+              metadata_path, = (name for name in wheel.namelist() if name.endswith(".dist-info/METADATA"))
+              metadata = BytesParser().parsebytes(wheel.read(metadata_path))
+          assert metadata["Name"] == "omnismi"
+          assert metadata["Version"] == version
+          PY
+      - name: Verify the installed release and quickstarts
+        run: |
+          python -m venv "$RUNNER_TEMP/release-check"
+          "$RUNNER_TEMP/release-check/bin/python" -m pip install --no-deps dist/*.whl
+          "$RUNNER_TEMP/release-check/bin/python" -m pip check
+          "$RUNNER_TEMP/release-check/bin/python" scripts/verify_v2_install.py
+          "$RUNNER_TEMP/release-check/bin/python" scripts/verify_quickstart.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-distributions
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: verify-distributions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/omnismi/
+    permissions:
+      id-token: write
+    env:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-distributions
+          path: dist
+      - name: Publish with Trusted Publishing
+        if: env.PYPI_API_TOKEN == ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish with a configured project token
+        if: env.PYPI_API_TOKEN != ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          attestations: false

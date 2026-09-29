@@ -6,31 +6,34 @@ Start with an offline result on any Linux or macOS laptop. Add a vendor runtime
 only when you move to a hardware host. Python 3.9+ is required; Python 3.12 is a
 tested starting point. Linux is required for live sysfs topology and SDK builds.
 
-## Install the 2.0 preview
+## Install 2.0.0
 
-The [PyPI release](https://pypi.org/project/omnismi/) is currently 1.0.0 and does
-not include the preview commands below. Use this source branch:
+Install the package in a fresh virtual environment:
 
 ```bash
-git clone --branch codex/v2-runtime-completion --single-branch https://github.com/phantom5125/omnismi.git
-cd omnismi
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install .
+python -m pip install --upgrade 'omnismi==2.0.0'
 ```
 
-If you already cloned this branch, start at the virtual-environment step. All
-relative file paths below are from the repository root. The core package has no
-mandatory vendor dependencies. The development package version is still 1.0.0;
-check command availability rather than using that number to identify the preview:
+The core package has no mandatory vendor dependencies. To use the example files
+later in this guide, clone the matching release and run those commands from its root:
+
+```bash
+git clone --branch release-2.0.0 --single-branch https://github.com/phantom5125/omnismi.git
+cd omnismi
+```
+
+For a source installation, use `python -m pip install .` from that checkout.
+Check command availability:
 
 <!-- quickstart-smoke: help -->
 ```bash
 python -m omnismi decode --help
 ```
 
-For only the released Python telemetry API, install `omnismi`, `omnismi[nvidia]`
-or `omnismi[amd]` from PyPI in a separate environment. See the [API](api.md).
+For vendor telemetry, add `omnismi[nvidia]==2.0.0` or `omnismi[amd]==2.0.0`
+to the same environment. The [Python API](api.md) remains compatible with 1.0.
 
 ## Interpret an error without hardware
 
@@ -150,7 +153,7 @@ print(report["data"]["findings"])
 | Symptom | Next step |
 |---|---|
 | `omnismi` is not found | Activate the venv, or use `python -m omnismi` with the interpreter where it was installed. |
-| `decode` is unrecognized | You likely installed PyPI 1.0.0 or another checkout; install this preview branch in the active venv. |
+| `decode` is unrecognized | Check the active environment and upgrade with `python -m pip install --upgrade 'omnismi==2.0.0'`. |
 | Zero devices or null metrics | Run `omnismi doctor`; check the selected backend dependency, driver access and container visibility. Zero is not a health verdict. |
 | `dmesg`/sysfs permission denied | Use an authorized captured log with `diagnose --input`; do not assume empty evidence means a healthy device. |
 | `SAIL_native_probe_not_installed` | Build with `omnismi sail-build` on the SDK host and set `OMNISMI_SAIL_PROBE`. |

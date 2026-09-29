@@ -1,7 +1,6 @@
-# Omnismi 2.0 implementation plan
+# Omnismi 2.0 design and development history
 
-Status: the second implementation on `codex/v2-runtime-completion` extends the
-combined `codex/v2-preview` with active probes, baseline authoring, live topology,
+Version 2.0.0 includes active probes, baseline authoring, live topology,
 full PPU telemetry, native SAIL workloads and an SDK-compiled Cambricon adapter.
 `bench matmul` and `bench suite` now execute bounded probes. See [delivery status](STATUS.md)
 for commands, validation and remaining external evidence. No new card has been
@@ -14,13 +13,13 @@ health, performance and locality in one call. Vendor-document research happens
 when maintaining the package, not during each diagnosis. Preserve the small
 existing Python API and keep vendor dependencies optional.
 
-## Branches and order
+## Original feature branches
 
-All feature branches start from the same `codex/v2-integration` bootstrap commit,
-which descends from `codex/cli-foundation` at `ab1ffd8`. They are sibling branches,
-not a chain. Merge reviewed changes into integration, then refresh other branches
-only when they need the new contracts. Do not merge integration into `main` until
-the existing CLI work is reviewed. Keep the package version unchanged for now.
+The original feature branches started from the same `codex/v2-integration`
+bootstrap commit, which descends from `codex/cli-foundation` at `ab1ffd8`.
+Their work was assembled in `codex/v2-preview` and completed in
+`codex/v2-runtime-completion`. Version 2.0.0 ships the integrated implementation;
+new work should start from `main`.
 
 | Order | Branch | Scope | Feature design on that branch |
 |---|---|---|---|
@@ -36,11 +35,10 @@ diagnostics and topology later; the initial percentage calculator must not depen
 on either. Vendor-specific diagnostics and benchmarks follow each adapter's
 validated discovery/metrics support.
 
-Existing PR #5 (`feat/agent-preflight-cli`) overlaps the CLI foundation in the CLI
-module and documentation. Resolve command dispatch, output schemas, visibility
-semantics and exit codes before accepting either implementation into the 2.0
-release baseline. Do not blindly merge the two CLI files. The old `dc/test`
-hardware-detection changes require separate review for container false negatives.
+PR #5 (`feat/agent-preflight-cli`) is a separate proposal outside the 2.0.0
+release. Its admission thresholds, visibility remapping and command compatibility
+remain follow-up work; inventory and metrics are available through the overview
+CLI. Future integration must preserve the released report and exit-code contracts.
 
 ## Shared report contract
 
@@ -58,8 +56,7 @@ hardware-detection changes require separate review for container false negatives
   numeric confidence; use `observed`, `suspected`, `inconclusive` with reasons.
 - Compact JSON is the default for new agent commands; stderr carries diagnostics.
   New-command exit codes: 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, 64 invalid input.
-  Existing overview/doctor/legacy bandwidth commands retain their behavior;
-  reconcile that migration with PR #5 before releasing 2.0.
+  Existing overview/doctor/legacy bandwidth commands retain their behavior.
 - Public Python functions return serializable report objects without printing or
   invoking an LLM. Runtime diagnosis has no network dependency.
 - Passive collection never resets devices, injects errors, changes affinity or
