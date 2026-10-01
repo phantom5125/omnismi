@@ -68,7 +68,7 @@ omnismi = "omnismi.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"omnismi.selftest" = ["targets.json"]
+"omnismi.selftest" = ["targets.json", "hardware.json"]
 "omnismi.dashboard" = ["static/*", "static/assets/*"]
 "omnismi.diagnostics" = ["catalog.json"]
 "omnismi.backends" = ["cndev_probe.c", "sail_probe.hg", "sail_probe_host.hpp"]

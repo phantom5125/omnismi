@@ -19,21 +19,19 @@ export function demoReport() {
       operator: "topk",
       k: n ? 7 : 1,
     });
-  const results = cases
-    .slice(0, 8)
-    .map((test, i) => ({
-      case: test,
+  const results = cases.slice(0, 8).map((test, i) => ({
+    case: test,
+    status: i === 7 ? "FAIL" : "PASS",
+    executions: 1,
+    comparisons: 1,
+    last_seed: 20260930 + i * 1009,
+    last_iteration: 0,
+    phases: ["baseline"],
+    last_comparison: {
       status: i === 7 ? "FAIL" : "PASS",
-      executions: 1,
-      comparisons: 1,
-      last_seed: 20260930 + i * 1009,
-      last_iteration: 0,
-      phases: ["baseline"],
-      last_comparison: {
-        status: i === 7 ? "FAIL" : "PASS",
-        comparison: "exact",
-      },
-    }));
+      comparison: "exact",
+    },
+  }));
   return {
     schema_version: 1,
     report_type: "hardware_selftest",
@@ -58,7 +56,7 @@ export function demoReport() {
       vendor: "nvidia",
       name: "NVIDIA GeForce RTX 5090",
       framework: "pytorch",
-      framework_version: "演示",
+      framework_version: "demo",
       execution_device: "cuda:0",
       uuid: null,
     },
@@ -91,6 +89,6 @@ export function demoReport() {
         hardware_fault_confirmed: false,
       },
     ],
-    limitations: ["合成故障演示，不代表任何真实硬件结果。"],
+    limitations: ["Synthetic example, not a real-device result."],
   };
 }

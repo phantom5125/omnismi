@@ -4,6 +4,7 @@ import http.client
 import json
 import re
 import threading
+from pathlib import Path
 
 import pytest
 
@@ -37,7 +38,13 @@ def test_bundled_assets_and_preloaded_plan(server):
     assert server.server_address[0] == "127.0.0.1"
     status, headers, body = request(server)
     assert status == 200
+    assert b'<html lang="en">' in body
     assert b'<div id="root"' in body
+    logo_path = re.search(rb'href="(/assets/OMNIsmi-[^"]+\.svg)"', body)
+    assert logo_path, "The original project logo must be bundled as the favicon"
+    status, _, logo = request(server, logo_path.group(1).decode())
+    assert status == 200
+    assert logo == (Path(__file__).parents[1] / "docs/assets/OMNIsmi.svg").read_bytes()
     assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
     assert headers["Cache-Control"] == "no-store"
     for path in re.findall(rb'(?:src|href)="(/assets/[^\"]+)"', body):

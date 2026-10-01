@@ -4,22 +4,12 @@ import catalog from "../../src/omnismi/selftest/targets.json";
 import { commandFor, defaultConfig } from "./report.js";
 import { Command, CopyButton } from "./ui.jsx";
 
-export default function SetupView({ initial, onImport }) {
+export default function SetupView({ initial, retest, onImport }) {
   const [config, setConfig] = useState(
     () => initial || defaultConfig(catalog.targets[0]),
   );
   const target = catalog.targets.find((t) => t.id === config.target);
-  function update(key, value) {
-    setConfig((previous) => ({ ...previous, [key]: value }));
-  }
-  function chooseTarget(id) {
-    const selected = catalog.targets.find((t) => t.id === id);
-    setConfig((previous) => ({
-      ...previous,
-      target: selected.id,
-      vendor: selected.vendor,
-    }));
-  }
+  const update = (key, value) => setConfig((c) => ({ ...c, [key]: value }));
   let run = "",
     plan = "",
     error = "";
@@ -31,22 +21,25 @@ export default function SetupView({ initial, onImport }) {
   }
   return (
     <div className="workflow-page">
-      <h1>{initial ? "准备复测" : "开始一次自检"}</h1>
+      <h1>{retest ? "Prepare a retest" : "Start with a quick check"}</h1>
       <p className="lead">
-        选择设备与测试范围，在目标机器执行命令，再把报告带回来查看。
+        Choose a device, run the command, then open the report.
       </p>
       <div className="workflow-layout">
         <section className="panel setup">
-          <h2>1. 选择测试范围</h2>
+          <h2>1. Choose your test</h2>
           <label>
-            目标型号
+            Hardware model
             <select
               value={config.target || ""}
-              onChange={(e) => chooseTarget(e.target.value)}
+              onChange={(e) => {
+                const t = catalog.targets.find((t) => t.id === e.target.value);
+                setConfig((c) => ({ ...c, target: t.id, vendor: t.vendor }));
+              }}
             >
               {!config.target ? (
                 <option value="">
-                  通用 {config.vendor} 配置（保留原报告范围）
+                  Generic {config.vendor} · Original scope
                 </option>
               ) : null}
               {catalog.targets.map((t) => (
@@ -58,10 +51,10 @@ export default function SetupView({ initial, onImport }) {
           </label>
           <p className="field-help">
             {target?.requirements ||
-              "复用原报告的厂商配置。型号预设与厂商运行时编号是两件事。"}
+              "Uses the vendor and scope from your report."}
           </p>
           <label>
-            测试方案
+            Test profile
             <select
               value={config.profile}
               onChange={(e) =>
@@ -74,17 +67,19 @@ export default function SetupView({ initial, onImport }) {
                 }))
               }
             >
-              <option value="smoke">快速检查 · 首次使用</option>
-              <option value="extended">扩展检查 · 更多精度与输入组合</option>
-              <option value="soak">负载检查 · 计算与复查交错执行</option>
+              <option value="smoke">Quick · Start here</option>
+              <option value="extended">
+                Extended · More inputs and data types
+              </option>
+              <option value="soak">Load · Compute bursts with rechecks</option>
             </select>
           </label>
           <div className="form-grid">
             {[
-              ["device", "运行时设备编号", 0, 4095],
-              ["passes", "重复次数", 1, 100],
-              ["timeout", "总时间预算 / 秒", 1, 3600],
-              ["memory_mib", "张量预算 / MiB", 16, 4096],
+              ["device", "Runtime device index", 0, 4095],
+              ["passes", "Repetitions", 1, 100],
+              ["timeout", "Time limit (seconds)", 1, 3600],
+              ["memory_mib", "Tensor budget (MiB)", 16, 4096],
             ].map(([key, label, min, max]) => (
               <label key={key}>
                 {label}
@@ -92,7 +87,7 @@ export default function SetupView({ initial, onImport }) {
                   type="number"
                   min={min}
                   max={max}
-                  step="1"
+                  step={key === "timeout" ? "any" : "1"}
                   value={config[key]}
                   onChange={(e) =>
                     update(
@@ -105,12 +100,13 @@ export default function SetupView({ initial, onImport }) {
             ))}
           </div>
           <p className="field-help">
-            设备编号来自计算运行时，可能与总览编号不同。预算不包含框架工作空间；达到总时间上限会停止。
+            Use the index shown by your compute runtime. The memory budget
+            excludes framework workspace.
           </p>
           <details>
-            <summary>复现与负载参数</summary>
+            <summary>Advanced settings</summary>
             <label>
-              随机种子
+              Random seed
               <input
                 type="number"
                 min="0"
@@ -122,7 +118,7 @@ export default function SetupView({ initial, onImport }) {
             {config.profile === "soak" ? (
               <>
                 <label>
-                  负载阶段时长 / 秒
+                  Load duration (seconds)
                   <input
                     type="number"
                     min="0"
@@ -133,7 +129,7 @@ export default function SetupView({ initial, onImport }) {
                   />
                 </label>
                 <label>
-                  观测功率目标 / W（可选）
+                  Power target (W, optional)
                   <input
                     type="number"
                     min="0"
@@ -148,13 +144,14 @@ export default function SetupView({ initial, onImport }) {
                   />
                 </label>
                 <p className="field-help">
-                  这是验收条件，不会设置设备功率。无归属明确的采样或未达目标时，结果为未判定。
+                  An observation goal, not a power setting. Missing samples or
+                  an unmet target make the result inconclusive.
                 </p>
               </>
             ) : null}
             <p className="field-help">
-              复测保留 seed 与已记录的算子选择。证据写入
-              ./sdc-evidence；逐输入回放仍需保留 NPZ 文件。
+              Retests preserve the seed and operator selection. Keep the NPZ
+              files to replay the exact failing inputs.
             </p>
           </details>
           {error ? (
@@ -164,36 +161,37 @@ export default function SetupView({ initial, onImport }) {
           ) : null}
         </section>
         <section className="panel workflow-instructions">
-          <h2>2. 在目标机器运行</h2>
+          <h2>2. Run on your test machine</h2>
           <p>
-            先取得 2.1 开发分支源码，在仓库目录中安装，并配置匹配的计算运行时。
+            In the 2.1 source checkout, install Omnismi. Set up a compatible
+            vendor runtime first.
           </p>
           <Command text="python -m pip install -e '.[selftest]'" />
-          <p>可先查看计划，不执行计算：</p>
-          <Command text={plan || "请先修正左侧配置。"} />
-          <CopyButton key={plan} text={plan} label="复制计划命令" />
-          <p>确认范围后运行自检：</p>
-          <Command text={run || "请先修正左侧配置。"} />
-          <CopyButton key={run} text={run} label="复制自检命令" primary />
+          <p>Preview the plan without starting a workload:</p>
+          <Command text={plan || "Fix the settings to create a command."} />
+          <CopyButton key={plan} text={plan} label="Copy plan command" />
+          <p>Run the test and save its report:</p>
+          <Command text={run || "Fix the settings to create a command."} />
+          <CopyButton key={run} text={run} label="Copy test command" primary />
           <p className="field-help">
-            这个看板不直接启动 GPU 负载。退出码 2/3
-            也要保留报告，分别表示发现异常/尚不能判断。
+            Keep the report even if the command exits with code 2 (mismatch) or
+            3 (inconclusive).
           </p>
           <div className="next-steps">
-            <h2>3. 查看测试结果</h2>
+            <h2>3. Read the results</h2>
             <p>
-              导入生成的 selftest.json。失败时同时保留 sdc-evidence
-              中的数据文件。
+              Open selftest.json here. Keep sdc-evidence too if a check fails.
             </p>
             <button className="button outline" onClick={onImport}>
-              导入测试报告 <ArrowRight size={17} />
+              Import test report <ArrowRight size={17} />
             </button>
           </div>
         </section>
       </div>
       <p className="notice">
         <Info size={18} />
-        执行路径已接入；首批型号仍待实卡验收。负载检查不保证达到额定功率，单卡通过不代表所有硬件单元都健康。
+        Real-device validation is pending. This page creates commands; it does
+        not start a workload.
       </p>
     </div>
   );

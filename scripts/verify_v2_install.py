@@ -80,6 +80,16 @@ with tempfile.TemporaryDirectory() as temporary:
     )
 
 assert len(target_catalog()["targets"]) == 4
+hardware_maps = json.loads(
+    files("omnismi.selftest").joinpath("hardware.json").read_text()
+)
+assert {item["id"] for item in hardware_maps["profiles"]} == {
+    item["id"] for item in target_catalog()["targets"]
+}
+assert any(
+    asset.name.startswith("OMNIsmi-") and asset.name.endswith(".svg")
+    for asset in files("omnismi.dashboard").joinpath("static/assets").iterdir()
+)
 server = create_server(0)
 assert server.server_address[0] == "127.0.0.1"
 server.server_close()

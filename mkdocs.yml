@@ -26,7 +26,8 @@ nav:
   - Validation: validation.md
   - "2.1 preview":
       - Hardware self-test: v2.1/hardware-selftest.md
-      - 硬件测试看板: v2.1/dashboard.md
+      - Hardware dashboard: v2.1/dashboard.md
+      - 看板中文指南: v2.1/dashboard.zh-CN.md
   - Roadmap: roadmap.md
   - Development: development.md
   - Releasing: releasing.md

@@ -12,14 +12,14 @@ import { Definition, Status } from "./ui.jsx";
 function Inspector({ row, siblings, select, onRetest }) {
   const { case: test, failure, record, status } = row;
   return (
-    <aside className="panel inspector" aria-label="用例详情">
+    <aside className="panel inspector" aria-label="Case details">
       <div className="section-heading">
-        <h2>{status === "FAIL" ? "异常详情" : "用例详情"}</h2>
+        <h2>{status === "FAIL" ? "Mismatch details" : "Case details"}</h2>
         <Status status={status} />
       </div>
       <select
         className="case-selector"
-        aria-label="选择用例"
+        aria-label="Select case"
         value={test.id}
         onChange={(e) => select(e.target.value)}
       >
@@ -35,45 +35,49 @@ function Inspector({ row, siblings, select, onRetest }) {
           ["shape", test.shape.join(" × ")],
           ...(test.operator === "topk" ? [["k", test.k]] : []),
           ["seed", failure?.seed ?? record?.last_seed],
-          ["说明", reasonFor(row)],
+          ["Details", reasonFor(row)],
         ]}
       />
       <details className="technical">
-        <summary>更多技术参数</summary>
+        <summary>Technical details</summary>
         <Definition
           items={[
-            ["布局", test.layout],
-            ["输入分布", test.pattern],
+            ["Layout", test.layout],
+            ["Input pattern", test.pattern],
             ["largest", test.largest],
             ["sorted", test.sorted],
-            ["比较次数", record?.comparisons ?? 0],
-            ["比较方式", record?.last_comparison?.comparison],
-            ["相对容差", record?.last_comparison?.rtol ?? 0],
-            ["绝对容差", record?.last_comparison?.atol ?? 0],
+            ["Comparisons", record?.comparisons ?? 0],
+            ["Comparison", record?.last_comparison?.comparison],
+            ["Relative tolerance", record?.last_comparison?.rtol ?? 0],
+            ["Absolute tolerance", record?.last_comparison?.atol ?? 0],
             [
-              "失败坐标",
+              "Mismatch locations",
               failure?.examples ? JSON.stringify(failure.examples) : null,
             ],
-            ["失败数据文件", failure?.artifact],
-            ["运行时详情", record?.detail],
+            ["Evidence file", failure?.artifact],
+            ["Runtime details", record?.detail],
           ]}
         />
       </details>
       <section className="next-steps">
-        <h2>下一步</h2>
+        <h2>Next steps</h2>
         <ol>
           {(status === "FAIL"
-            ? ["保存报告与失败数据", "同卡重复测试", "换卡或更换框架版本对照"]
+            ? [
+                "Save the report and evidence.",
+                "Repeat on the same device.",
+                "Compare another device or runtime version.",
+              ]
             : status === "PASS"
               ? [
-                  "保存本次测试报告",
-                  "扩大用例或增加重复次数",
-                  "结合覆盖范围判断下一步",
+                  "Save this report.",
+                  "Try more cases or repetitions.",
+                  "Review what remains untested.",
                 ]
               : [
-                  "确认运行时与设备可用",
-                  "查看预算和未完成原因",
-                  "执行检查后重新导入报告",
+                  "Check the runtime and device.",
+                  "Review limits and incomplete checks.",
+                  "Run again and import the new report.",
                 ]
           ).map((step) => (
             <li key={step}>{step}</li>
@@ -81,7 +85,7 @@ function Inspector({ row, siblings, select, onRetest }) {
         </ol>
         <button className="button outline full" onClick={onRetest}>
           <Terminal size={17} />
-          生成复测命令
+          Prepare a retest
         </button>
       </section>
     </aside>
@@ -103,11 +107,11 @@ function PowerEvidence({ telemetry }) {
   return (
     <section className="panel power">
       <div className="section-heading">
-        <h2>功率证据</h2>
+        <h2>Power observations</h2>
         <span className="muted">
           {samples.length
-            ? `${samples.length} 个样本 · 峰值 ${peak.toFixed(1)} W`
-            : "未取得可归属的采样"}
+            ? `${samples.length} samples · Peak ${peak.toFixed(1)} W`
+            : "No device-attributed samples"}
         </span>
       </div>
       {samples.length ? (
@@ -115,7 +119,7 @@ function PowerEvidence({ telemetry }) {
           className="power-chart"
           viewBox="0 0 800 100"
           role="img"
-          aria-label={`功率采样曲线，峰值 ${peak.toFixed(1)} 瓦`}
+          aria-label={`Power samples, peak ${peak.toFixed(1)} watts`}
         >
           <line x1="0" y1="90" x2="800" y2="90" stroke="var(--line)" />
           <polyline
@@ -128,15 +132,15 @@ function PowerEvidence({ telemetry }) {
       ) : null}
       <p className="muted">
         {telemetry.target_w == null
-          ? "本次未设置功率目标，不能据此宣称通过高功率验证。"
-          : `目标 ${telemetry.target_w} W · ${telemetry.target_observed ? "报告记录达到采样条件" : "尚未满足采样条件"}`}{" "}
-        曲线按采样顺序排列。软件采样无法捕捉所有瞬态尖峰。
+          ? "No power target was set. High-power behavior is unverified."
+          : `Target ${telemetry.target_w} W · ${telemetry.target_observed ? "sampling criterion met" : "sampling criterion not met"}`}{" "}
+        Samples are shown in order. Brief power spikes may be missed.
       </p>
     </section>
   );
 }
 
-export default function ReportView({ report, onRetest }) {
+export default function ReportView({ report, onRetest, onHardware }) {
   const summary = summarize(report);
   const { rows, counts, status } = summary;
   const [filter, setFilter] = useState("all");
@@ -176,32 +180,39 @@ export default function ReportView({ report, onRetest }) {
   }
   const title =
     status === "FAIL"
-      ? "发现数值异常"
+      ? "Numerical mismatch found"
       : status === "PASS"
-        ? "所选检查通过"
+        ? "Selected checks passed"
         : !report.executed
-          ? "这是一份测试计划"
-          : "还不能得出结论";
+          ? "Test plan · Not run yet"
+          : "More evidence needed";
   const firstFailure = rows.find((r) => r.status === "FAIL");
   const explanation =
     status === "FAIL"
-      ? `${firstFailure?.case.operator || "算子"} 的结果与 CPU 参考或算子要求不一致。需要复测，尚不能确认硬件故障。`
+      ? `${firstFailure?.case.operator || "Operator"} returned an unexpected result. Retest before drawing conclusions about the hardware.`
       : status === "PASS"
-        ? "本次已执行的检查符合预期。通过仅覆盖所选用例，不代表整卡健康。"
+        ? "The selected checks met their criteria. This does not certify the entire device."
         : !report.executed
-          ? "尚未执行计算。先确认测试范围，再在目标机器运行自检。"
+          ? "Review the scope, then run the test on your device."
           : (Object.hasOwn(reasons, report.errors?.[0]?.reason)
               ? reasons[report.errors[0].reason]
               : null) ||
-            "部分检查或验收条件尚未满足。请查看未完成的用例与覆盖范围。";
+            "Some checks or acceptance criteria are incomplete. Review the details below.";
   return (
     <>
       <section className="device-heading">
         <h1>
-          {report.identity?.name || report.target?.name || "尚未识别设备"}
+          {report.identity?.name ||
+            report.target?.name ||
+            "Device not identified"}
         </h1>
         <p>
-          {report.config.profile} ·{" "}
+          {
+            { smoke: "Quick", extended: "Extended", soak: "Load" }[
+              report.config.profile
+            ]
+          }{" "}
+          ·{" "}
           {report.config.vendor === "google"
             ? "JAX / TPU"
             : report.config.vendor === "amd"
@@ -209,10 +220,13 @@ export default function ReportView({ report, onRetest }) {
               : report.config.vendor === "nvidia"
                 ? "CUDA / PyTorch"
                 : report.config.vendor}{" "}
-          · 单张可见设备
+          · One visible device
         </p>
       </section>
-      <section className={`verdict verdict-${status}`} aria-label="测试结论">
+      <section
+        className={`verdict verdict-${status}`}
+        aria-label="Test conclusion"
+      >
         {status === "PASS" ? (
           <CheckCircle2 size={36} />
         ) : (
@@ -230,38 +244,41 @@ export default function ReportView({ report, onRetest }) {
               setSelected(firstFailure.case.id);
             }}
           >
-            查看异常 <ArrowRight size={18} />
+            View mismatch <ArrowRight size={18} />
           </button>
         ) : null}
       </section>
-      <section className="metrics" aria-label="用例统计">
+      <section className="metrics" aria-label="Case summary">
         <div>
           <strong className="positive">{counts.PASS}</strong>
-          <span>通过</span>
+          <span>Passed</span>
         </div>
         <div>
           <strong className="negative">{counts.FAIL}</strong>
-          <span>异常</span>
+          <span>Mismatch</span>
         </div>
         <div>
           <strong className="caution">
             {counts.NOT_RUN + counts.INCONCLUSIVE}
           </strong>
-          <span>{counts.INCONCLUSIVE ? "未完成 / 未判定" : "未执行"}</span>
+          <span>{counts.INCONCLUSIVE ? "Incomplete" : "Not run"}</span>
         </div>
         <div>
-          <strong className="unknown">未确认</strong>
-          <span>物理单元覆盖</span>
+          <strong className="unknown">Unknown</strong>
+          <span>Physical coverage</span>
         </div>
       </section>
       <div className="results-layout">
         <section className="panel checks">
-          <h2>算子检查</h2>
-          <div className="tabs" role="group" aria-label="筛选检查结果">
+          <h2>Operator checks</h2>
+          <div className="tabs" role="group" aria-label="Filter test results">
             {[
-              ["all", `全部 (${rows.length})`],
-              ["fail", `异常 (${counts.FAIL})`],
-              ["pending", `未完成 (${counts.NOT_RUN + counts.INCONCLUSIVE})`],
+              ["all", `All (${rows.length})`],
+              ["fail", `Mismatches (${counts.FAIL})`],
+              [
+                "pending",
+                `Incomplete (${counts.NOT_RUN + counts.INCONCLUSIVE})`,
+              ],
             ].map(([value, label]) => (
               <button
                 key={value}
@@ -276,9 +293,9 @@ export default function ReportView({ report, onRetest }) {
             <table>
               <thead>
                 <tr>
-                  <th>检查项目</th>
-                  <th>结果</th>
-                  <th>说明</th>
+                  <th>Check</th>
+                  <th>Result</th>
+                  <th>Details</th>
                 </tr>
               </thead>
               <tbody>
@@ -310,8 +327,8 @@ export default function ReportView({ report, onRetest }) {
                     </td>
                     <td>
                       {reasonFor(row).replace(
-                        "索引指向的输入值与返回值不一致。",
-                        "值与索引不一致",
+                        "Returned values do not match the input at their indices.",
+                        "Value/index mismatch",
                       )}
                     </td>
                   </tr>
@@ -319,12 +336,12 @@ export default function ReportView({ report, onRetest }) {
               </tbody>
             </table>
             {!visible.length ? (
-              <p className="no-rows">此筛选下没有用例。</p>
+              <p className="no-rows">No cases in this view.</p>
             ) : null}
           </div>
           <p className="table-note">
             <Info size={17} />
-            按算子分组；点击查看用例。未执行不等于通过。
+            Grouped by operator. Select a row to inspect its cases.
           </p>
         </section>
         <Inspector
@@ -337,25 +354,28 @@ export default function ReportView({ report, onRetest }) {
         />
       </div>
       <div className="scope-strip">
-        测试范围{" "}
+        Test scope{" "}
         <span>
-          已尝试用例 {summary.attempted} / {rows.length}
+          Attempted {summary.attempted} / {rows.length}
         </span>
-        <span>XID/RAS 未采集</span>
-        <span>整卡健康 尚不能判断</span>
+        <span>XID/RAS not collected</span>
+        <span>Device health unknown</span>
+        <button className="text-button" onClick={onHardware}>
+          Explore hardware <ArrowRight size={15} />
+        </button>
       </div>
       <PowerEvidence telemetry={report.telemetry} />
       <details className="report-details">
-        <summary>设备、运行环境与原始证据</summary>
+        <summary>Device and report details</summary>
         <Definition
           items={[
-            ["工具版本", report.tool_version],
-            ["设备 UUID", report.identity?.uuid],
-            ["计算设备", report.identity?.execution_device],
-            ["框架版本", report.identity?.framework_version],
-            ["运行时版本", report.identity?.runtime_version],
-            ["报告状态", report.status],
-            ["完整执行", report.complete],
+            ["Tool version", report.tool_version],
+            ["Device UUID", report.identity?.uuid],
+            ["Runtime device", report.identity?.execution_device],
+            ["Framework version", report.identity?.framework_version],
+            ["Runtime version", report.identity?.runtime_version],
+            ["Report status", report.status],
+            ["Run completed", report.complete],
           ]}
         />
         <pre>

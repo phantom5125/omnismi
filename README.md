@@ -25,7 +25,8 @@ for what cross-hardware portability means and which capabilities are still plann
 
 **2.1 development preview:** this branch adds opt-in CPU-reference operator
 self-tests, including independent topk checks and interleaved load testing,
-plus a [local dashboard](docs/v2.1/dashboard.md) with guided commands and
+plus an English-first [local dashboard](docs/v2.1/dashboard.md) with guided commands,
+source-linked hardware module maps, and
 RTX 5090 / B300 / MI355X / TPU v6e presets (real-card validation pending).
 See the [2.1 guide and coverage limits](docs/v2.1/hardware-selftest.md).
 This preview does not certify every physical unit; PPU SDC execution is pending.

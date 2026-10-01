@@ -81,6 +81,7 @@ Environment compatibility goals
   discovery layer, or explain mismatches clearly through diagnostics.
 
 Dashboard preview
+- English-first, plain-language UI reuses docs/assets/OMNIsmi.svg. Hardware maps explain vendor-documented modules, with source links and explicit test gaps. Operator evidence never becomes physical-unit coverage or fault localization.
 - `omnismi dashboard` serves a bundled local-only report viewer and guided command builder. Humans and agents use the same hardware_selftest schema. No HTTP workload execution.
 - RTX 5090, B300, MI355X and TPU v6e presets are implemented, with runtime model guards and pending real-card validation.
 

@@ -4,44 +4,135 @@
   "selection_basis": "Owner priorities and runtime diversity; not a ranking of hardware defect rates or measured popularity.",
   "targets": [
     {
-      "id": "rtx-5090", "name": "NVIDIA GeForce RTX 5090", "short_name": "RTX 5090", "vendor": "nvidia",
-      "family": "Blackwell / GeForce", "runtime": "CUDA / PyTorch", "priority": 1,
-      "name_pattern": "\\brtx\\s+5090\\b", "dtypes": ["float32", "float16", "bfloat16", "int32"], "load_dtype": "float16",
-      "adapter_status": "implemented", "hardware_validation": "pending", "unit_coverage": "unknown",
-      "focus": "优先检查 topk 的值与索引、近似相等输入、不同布局和重复执行。",
-      "requirements": "使用能够支持本卡的 CUDA PyTorch 与驱动组合；先运行 smoke，再增加重复次数。",
-      "gaps": "暂无本项目实卡验收；不覆盖 FP4/FP8、完整显存或每个物理单元。",
-      "sources": [{"label": "NVIDIA 产品资料", "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/"}, {"label": "PyTorch 数值错误报告（软件问题线索）", "url": "https://github.com/pytorch/pytorch/issues/189567"}]
+      "id": "rtx-5090",
+      "name": "NVIDIA GeForce RTX 5090",
+      "short_name": "RTX 5090",
+      "vendor": "nvidia",
+      "family": "Blackwell / GeForce",
+      "runtime": "CUDA / PyTorch",
+      "priority": 1,
+      "name_pattern": "\\brtx\\s+5090\\b",
+      "dtypes": [
+        "float32",
+        "float16",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "float16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Check topk values and indices, near ties, layouts and repeatability.",
+      "requirements": "Use a compatible CUDA PyTorch build and driver. Start with Quick.",
+      "gaps": "Real-device validation pending. FP4/FP8 and full memory/unit coverage are not included.",
+      "sources": [
+        {
+          "label": "NVIDIA product specifications",
+          "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/"
+        },
+        {
+          "label": "PyTorch correctness issue (software context)",
+          "url": "https://github.com/pytorch/pytorch/issues/189567"
+        }
+      ]
     },
     {
-      "id": "b300", "name": "NVIDIA B300", "short_name": "B300", "vendor": "nvidia",
-      "family": "Blackwell Ultra", "runtime": "CUDA / PyTorch", "priority": 2,
-      "name_pattern": "\\bb300\\b", "dtypes": ["float32", "float16", "bfloat16", "int32"], "load_dtype": "float16",
-      "adapter_status": "implemented", "hardware_validation": "pending", "unit_coverage": "unknown",
-      "focus": "分开检查 topk 与 sort，并结合矩阵负载记录异常出现的阶段。",
-      "requirements": "逐张可见设备测试；明确容器或分区范围，功率目标需有可归属的监控数据。",
-      "gaps": "未完成 B300 实卡验收；单设备测试不代表整台 DGX、NVLink 或全部 SM 已覆盖。",
-      "sources": [{"label": "NVIDIA DGX B300 用户指南", "url": "https://docs.nvidia.com/dgx/dgxb300-user-guide/introduction-to-dgxb300.html"}, {"label": "CUDA 13.0.1 发布说明", "url": "https://docs.nvidia.com/cuda/archive/13.0.1/pdf/CUDA_Toolkit_Release_Notes.pdf"}]
+      "id": "b300",
+      "name": "NVIDIA B300",
+      "short_name": "B300",
+      "vendor": "nvidia",
+      "family": "Blackwell Ultra",
+      "runtime": "CUDA / PyTorch",
+      "priority": 2,
+      "name_pattern": "\\bb300\\b",
+      "dtypes": [
+        "float32",
+        "float16",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "float16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Check topk independently of sort, then repeat checks around matrix load.",
+      "requirements": "Test one visible device at a time. Power observations need a matching device UUID.",
+      "gaps": "Real-device validation pending. A single-device run does not cover DGX or NVLink.",
+      "sources": [
+        {
+          "label": "NVIDIA DGX B300 guide",
+          "url": "https://docs.nvidia.com/dgx/dgxb300-user-guide/introduction-to-dgxb300.html"
+        },
+        {
+          "label": "CUDA 13.0.1 release notes",
+          "url": "https://docs.nvidia.com/cuda/archive/13.0.1/pdf/CUDA_Toolkit_Release_Notes.pdf"
+        }
+      ]
     },
     {
-      "id": "mi355x", "name": "AMD Instinct MI355X", "short_name": "MI355X", "vendor": "amd",
-      "family": "AMD Instinct", "runtime": "ROCm / PyTorch", "priority": 3,
-      "name_pattern": "\\bmi355x\\b", "dtypes": ["float32", "float16", "bfloat16", "int32"], "load_dtype": "float16",
-      "adapter_status": "implemented", "hardware_validation": "pending", "unit_coverage": "unknown",
-      "focus": "比较 FP32、FP16、BF16 路径，并保留 ROCm 版本与算子参数。",
-      "requirements": "使用匹配 MI355X 的 ROCm PyTorch 构建；CUDA 构建不能替代 HIP。",
-      "gaps": "未完成 MI355X 实卡验收；不覆盖 MXFP4、MoE、XGMI 或全部 CU。",
-      "sources": [{"label": "AMD 产品资料", "url": "https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x.html"}, {"label": "ROCm AITER 精度问题记录（非硬件故障结论）", "url": "https://github.com/ROCm/aiter/issues/4012"}]
+      "id": "mi355x",
+      "name": "AMD Instinct MI355X",
+      "short_name": "MI355X",
+      "vendor": "amd",
+      "family": "AMD Instinct",
+      "runtime": "ROCm / PyTorch",
+      "priority": 3,
+      "name_pattern": "\\bmi355x\\b",
+      "dtypes": [
+        "float32",
+        "float16",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "float16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Compare FP32, FP16 and BF16. Keep ROCm versions with each report.",
+      "requirements": "Use a compatible ROCm PyTorch build for MI355X. A CUDA build cannot run this path.",
+      "gaps": "Real-device validation pending. MXFP4, MoE and multi-GPU links are not tested.",
+      "sources": [
+        {
+          "label": "AMD product specifications",
+          "url": "https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x.html"
+        },
+        {
+          "label": "ROCm AITER accuracy issue (software context)",
+          "url": "https://github.com/ROCm/aiter/issues/4012"
+        }
+      ]
     },
     {
-      "id": "tpu-v6e", "name": "Google TPU v6e", "short_name": "TPU v6e", "vendor": "google",
-      "family": "Trillium", "runtime": "JAX / TPU", "priority": 4,
-      "name_pattern": "\\btpu\\s+v6(?:e)?\\b", "dtypes": ["float32", "bfloat16", "int32"], "load_dtype": "bfloat16",
-      "adapter_status": "implemented", "hardware_validation": "pending", "unit_coverage": "unknown",
-      "focus": "使用 exact top_k 和 BF16/FP32 参考检查，记录 XLA 实际设备范围。",
-      "requirements": "在 TPU VM 上配置可用的 JAX / TPU 运行时；仅测试选中的本地 device。",
-      "gaps": "未完成 v6e 实卡验收；不等于整个 slice / ICI 验收；XLA 物理布局不可直接控制。",
-      "sources": [{"label": "Google TPU v6e 文档", "url": "https://docs.cloud.google.com/tpu/docs/v6e"}, {"label": "TPU bfloat16 数值语义", "url": "https://docs.cloud.google.com/tpu/docs/bfloat16"}]
+      "id": "tpu-v6e",
+      "name": "Google TPU v6e",
+      "short_name": "TPU v6e",
+      "vendor": "google",
+      "family": "Trillium",
+      "runtime": "JAX / TPU",
+      "priority": 4,
+      "name_pattern": "\\btpu\\s+v6(?:e)?\\b",
+      "dtypes": [
+        "float32",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "bfloat16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Check exact top_k and BF16/FP32 results on a specific local device.",
+      "requirements": "Use a working JAX/TPU runtime on a TPU VM. Choose one local device.",
+      "gaps": "Real-device validation pending. Physical layouts, ICI and the whole slice are not verified.",
+      "sources": [
+        {
+          "label": "Google TPU v6e documentation",
+          "url": "https://docs.cloud.google.com/tpu/docs/v6e"
+        },
+        {
+          "label": "TPU bfloat16 behavior",
+          "url": "https://docs.cloud.google.com/tpu/docs/bfloat16"
+        }
+      ]
     }
   ]
 }

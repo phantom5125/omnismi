@@ -3,7 +3,6 @@ import {
   BookOpen,
   CirclePlay,
   ClipboardList,
-  Crosshair,
   Download,
   FileJson,
   Info,
@@ -12,17 +11,19 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import logoUrl from "../../docs/assets/OMNIsmi.svg";
+import HardwareView from "./HardwareView.jsx";
 import ReportView from "./ReportView.jsx";
 import SetupView from "./SetupView.jsx";
-import { SupportView, GuideView } from "./SupportView.jsx";
+import { GuideView } from "./GuideView.jsx";
 import { demoReport } from "./demo.js";
 import { MAX_REPORT_BYTES, defaultConfig, parseReport } from "./report.js";
 
 const navigation = [
-  ["report", "测试报告", ClipboardList],
-  ["setup", "开始自检", CirclePlay],
-  ["support", "适配计划", List],
-  ["guide", "阅读指南", BookOpen],
+  ["report", "Test report", ClipboardList],
+  ["setup", "Run a test", CirclePlay],
+  ["hardware", "Hardware", List],
+  ["guide", "Guide", BookOpen],
 ];
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
   const [filename, setFilename] = useState("");
   const [error, setError] = useState("");
   const [initial, setInitial] = useState(null);
+  const [retest, setRetest] = useState(false);
   const [revision, setRevision] = useState(0);
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef(null);
@@ -58,11 +60,11 @@ export default function App() {
         if (text.trim() === "null" || generation.current !== baseline) return;
         const value = parseReport(text);
         if (generation.current === baseline)
-          showReport(value, "启动时载入的报告");
+          showReport(value, "Preloaded report");
       })
       .catch((err) => {
         if (err.name !== "AbortError" && generation.current === baseline)
-          setError(`启动报告未载入：${err.message}`);
+          setError(`Could not load the report: ${err.message}`);
       });
     return () => controller.abort();
   }, []);
@@ -74,15 +76,17 @@ export default function App() {
     const current = ++generation.current;
     setError("");
     try {
-      if (file.size > MAX_REPORT_BYTES) throw new Error("报告不能超过 8 MiB。");
+      if (file.size > MAX_REPORT_BYTES)
+        throw new Error("Reports must be 8 MiB or smaller.");
       const value = parseReport(await file.text());
       if (generation.current === current) showReport(value, file.name);
     } catch (err) {
       if (generation.current === current) setError(err.message);
     }
   }
-  function setup(config = null) {
+  function setup(config = null, isRetest = false) {
     setInitial(config);
+    setRetest(isRetest);
     setRevision((n) => n + 1);
     setPage("setup");
   }
@@ -108,7 +112,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#content">
-        跳转到主要内容
+        Skip to content
       </a>
       <aside className="sidebar">
         <a
@@ -119,10 +123,9 @@ export default function App() {
             setPage("report");
           }}
         >
-          <Crosshair size={29} />
-          <span>Omnismi</span>
+          <img src={logoUrl} alt="Omnismi" width="311" height="111" />
         </a>
-        <nav aria-label="主导航">
+        <nav aria-label="Main navigation">
           {navigation.map(([key, label, Icon]) => (
             <button
               key={key}
@@ -138,7 +141,7 @@ export default function App() {
         <button className="local-note" onClick={() => setPage("guide")}>
           <Wrench size={20} />
           <span>
-            本地工具<small>数据留在本地浏览器</small>
+            Local workspace<small>Your reports stay here</small>
           </span>
         </button>
       </aside>
@@ -149,12 +152,12 @@ export default function App() {
             {report ? (
               <button className="button" onClick={exportReport}>
                 <Download size={17} />
-                导出 JSON
+                Export JSON
               </button>
             ) : null}
             <button className="button primary" onClick={importAction}>
               <Upload size={17} />
-              导入报告
+              Import report
             </button>
           </div>
         </header>
@@ -163,7 +166,7 @@ export default function App() {
           className="sr-only"
           type="file"
           accept=".json,application/json"
-          aria-label="导入自检 JSON 报告"
+          aria-label="Import self-test JSON report"
           onChange={(e) => {
             importFile(e.target.files[0]);
             e.target.value = "";
@@ -173,7 +176,7 @@ export default function App() {
           <div className="error-notice" role="alert">
             <Info size={18} />
             {error}
-            <button aria-label="关闭错误提示" onClick={() => setError("")}>
+            <button aria-label="Dismiss error" onClick={() => setError("")}>
               <X size={17} />
             </button>
           </div>
@@ -187,30 +190,34 @@ export default function App() {
                 <Info size={19} />
                 <span>
                   {report.synthetic_demo
-                    ? "演示数据 · 合成故障，用于说明界面，非真实设备结果。"
-                    : `本地报告 · ${filename}`}
+                    ? "Demo · Synthetic results. No real hardware was tested."
+                    : `Local report · ${filename}`}
                 </span>
                 <button onClick={clearReport}>
-                  {report.synthetic_demo ? "退出演示" : "移除报告"}
+                  {report.synthetic_demo ? "Close demo" : "Remove report"}
                 </button>
               </div>
               <ReportView
                 key={revision}
                 report={report}
+                onHardware={() => setPage("hardware")}
                 onRetest={() =>
-                  setup({
-                    ...report.config,
-                    duration: report.config.duration ?? 60,
-                  })
+                  setup(
+                    {
+                      ...report.config,
+                      duration: report.config.duration ?? 60,
+                    },
+                    true,
+                  )
                 }
               />
             </>
           ) : (
             <section className="empty-state">
               <div className="empty-heading">
-                <h1>看清每一次硬件测试</h1>
+                <h1>Understand your hardware tests</h1>
                 <p>
-                  导入报告，了解哪些检查通过、哪里有异常，以及下一步该做什么。
+                  See what passed, what needs attention, and what to do next.
                 </p>
               </div>
               <div
@@ -227,51 +234,61 @@ export default function App() {
                 }}
               >
                 <FileJson size={46} strokeWidth={1.4} />
-                <h2>还没有测试报告</h2>
-                <p>拖入 selftest.json，或从本机选择文件。</p>
+                <h2>Open a test report</h2>
+                <p>Drop selftest.json here, or choose a file.</p>
                 <button className="button primary" onClick={importAction}>
                   <Upload size={17} />
-                  选择 JSON 报告
+                  Choose JSON file
                 </button>
-                <small>仅在本地解析 · 最大 8 MiB</small>
+                <small>Local only · Up to 8 MiB</small>
               </div>
               <div className="empty-actions">
                 <button className="button" onClick={() => setup()}>
                   <CirclePlay size={18} />
-                  第一次使用？生成测试命令
+                  Create a test command
                 </button>
                 <button
                   className="text-button"
-                  onClick={() => showReport(demoReport(), "合成演示")}
+                  onClick={() => showReport(demoReport(), "Synthetic demo")}
                 >
-                  查看演示报告
+                  Explore a demo
                 </button>
               </div>
               <div className="onboarding">
                 <div>
                   <span>01</span>
-                  <h3>选择范围</h3>
-                  <p>从快速检查开始，确认型号与设备编号。</p>
+                  <h3>Choose a test</h3>
+                  <p>Start with a quick check on one device.</p>
                 </div>
                 <div>
                   <span>02</span>
-                  <h3>执行自检</h3>
-                  <p>在目标机器运行，保留 JSON 和失败数据。</p>
+                  <h3>Run the command</h3>
+                  <p>Run on your test machine and save the report.</p>
                 </div>
                 <div>
                   <span>03</span>
-                  <h3>理解结果</h3>
-                  <p>先看结论，再检查用例与覆盖范围。</p>
+                  <h3>Review the results</h3>
+                  <p>Check the result, then explore the evidence.</p>
                 </div>
               </div>
             </section>
           )
         ) : null}
         {page === "setup" ? (
-          <SetupView key={revision} initial={initial} onImport={importAction} />
+          <SetupView
+            key={revision}
+            initial={initial}
+            retest={retest}
+            onImport={importAction}
+          />
         ) : null}
-        {page === "support" ? (
-          <SupportView onSelect={(target) => setup(defaultConfig(target))} />
+        {page === "hardware" ? (
+          <HardwareView
+            report={report}
+            initialTarget={report?.config.target}
+            onSetup={(target) => setup(defaultConfig(target))}
+            onReport={() => setPage("report")}
+          />
         ) : null}
         {page === "guide" ? <GuideView onSetup={() => setup()} /> : null}
       </main>

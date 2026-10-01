@@ -1271,16 +1271,18 @@
       "area": "cli",
       "status": "verified",
       "title": "Local hardware self-test dashboard and guided commands",
-      "description": "Bundled Chinese UI renders self-test evidence, unknown coverage, filters, local JSON import/export and guided commands. Loopback-only viewer; no HTTP workload execution.",
+      "description": "Bundled English-first UI reuses the project logo, renders self-test evidence, unknown coverage, local JSON import/export and guided commands. Source-linked hardware module diagrams explain RTX 5090, B300, MI355X and TPU v6e architecture, scoped operator evidence and test gaps. Loopback-only viewer; no HTTP workload execution.",
       "verification": [
         "npm --prefix frontend test",
         "PYTHONPATH=src pytest -q tests/test_dashboard.py",
-        "Browser QA: real CLI plans/unavailable reports, labelled demo, filters, export, command builder and mobile layout."
+        "Browser QA: real CLI plans/unavailable reports, labelled demo, filters, export, command builder and mobile layout.",
+        "Browser QA: English copy, original logo, four hardware maps, model-scoped evidence, module navigation and responsive layouts."
       ],
       "source_of_truth": [
         "src/omnismi/dashboard",
         "frontend",
-        "docs/v2.1/dashboard.md"
+        "docs/v2.1/dashboard.md",
+        "src/omnismi/selftest/hardware.json"
       ]
     },
     {
