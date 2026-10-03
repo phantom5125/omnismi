@@ -94,6 +94,10 @@ it makes no network request to retrieve whitepapers while viewing a report.
 
 ## Initial hardware targets
 
+For a repeatable run on RunPod, a local host or TPU VM, use the
+[real-device acceptance guide](hardware-acceptance.md). The campaign archives
+each stage separately; import a stage's `report.json` here, not `campaign.json`.
+
 | Target | Runtime | Extended data types | Status |
 |---|---|---|---|
 | `rtx-5090` | CUDA / PyTorch | FP32, FP16, BF16, INT32 | Adapter implemented; real-device validation pending |

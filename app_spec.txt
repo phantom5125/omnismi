@@ -23,6 +23,7 @@ Primary users
 Current tool and SDK contracts
 - CLI: overview/doctor/validate-spec plus diagnostics, perf-doctor, topology, bounded probes and SDK collector builds.
 - 2.1 preview: `self-test --plan/--run` with CPU-reference checks; PPU SDC execution and physical-unit coverage remain pending.
+- `self-test campaign --plan/--run` stages one-device acceptance, preserving environment, identity, per-stage reports and checksummed evidence. It does not provision cloud resources; normal-card PASS does not measure real SDC sensitivity.
 - Output contracts are command-specific today. Overview supports table/JSON/YAML; newer diagnostics and self-test primarily emit JSON. Full human rendering and capability discovery are planned.
 - Top-level API: `omnismi.count()`, `omnismi.gpus()`, `omnismi.gpu(index)`.
 - Device object: `GPU.index`, `GPU.info()`, `GPU.metrics()`, `GPU.realtime()`.

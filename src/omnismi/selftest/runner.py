@@ -32,7 +32,9 @@ def read_checkpoint(path, fallback):
         return fallback
 
 
-def finish(report, interrupted=False, returncode=0):
+def finish(
+    report, interrupted=False, returncode=0, interruption_reason="worker_timeout"
+):
     if (
         not interrupted
         and returncode == 0
@@ -44,7 +46,7 @@ def finish(report, interrupted=False, returncode=0):
         report["complete"] = False
         report.setdefault("errors", []).append(
             {
-                "reason": "worker_timeout" if interrupted else "worker_incomplete",
+                "reason": interruption_reason if interrupted else "worker_incomplete",
                 "returncode": returncode,
             }
         )
@@ -79,10 +81,14 @@ def run(config):
             start_new_session=True,
         )
         interrupted = False
+        interruption_reason = "worker_timeout"
         try:
             process.wait(timeout=config.timeout)
         except subprocess.TimeoutExpired:
             interrupted = True
+        except KeyboardInterrupt:
+            interrupted = True
+            interruption_reason = "worker_cancelled"
         finally:
             # Reap descendants even if a framework's parent exited first.
             try:
@@ -91,4 +97,4 @@ def run(config):
                 pass
             process.wait()
         report = read_checkpoint(checkpoint, fallback)
-        return finish(report, interrupted, process.returncode)
+        return finish(report, interrupted, process.returncode, interruption_reason)

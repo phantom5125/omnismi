@@ -35,6 +35,7 @@ with tempfile.TemporaryDirectory() as temporary:
         "bench matmul",
         "bench suite",
         "self-test",
+        "self-test campaign",
         "dashboard",
     ):
         result = subprocess.run(
@@ -65,6 +66,29 @@ with tempfile.TemporaryDirectory() as temporary:
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["executed"] is False
     assert json.loads(result.stdout)["target"]["id"] == "rtx-5090"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "omnismi",
+            "self-test",
+            "campaign",
+            "--plan",
+            "--target",
+            "b300",
+            "--suite",
+            "acceptance",
+        ],
+        cwd=temporary,
+        env=environment,
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    campaign = json.loads(result.stdout)
+    assert campaign["report_type"] == "hardware_acceptance"
+    assert campaign["executed"] is False and len(campaign["stages"]) == 6
     result = subprocess.run(
         [sys.executable, "-m", "omnismi", "diagnose", "--input", "-"],
         input="[ 1.0] NVRM: Xid (PCI:0000:03:00): 48, observed error\n",
@@ -100,6 +124,6 @@ assert (
     .is_file()
 )
 print(
-    "Installed wheel: catalog, native sources, ten CLI entry points "
-    "dashboard assets and target self-test plan passed"
+    "Installed wheel: catalog, native sources, eleven CLI entry points, "
+    "dashboard assets, target self-test and campaign plans passed"
 )

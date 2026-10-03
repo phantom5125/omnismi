@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-09-30",
+  "updated_at": "2026-10-03",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -1298,6 +1298,22 @@
       "source_of_truth": [
         "src/omnismi/selftest/targets.json",
         "docs/v2.1/dashboard.md"
+      ]
+    },
+    {
+      "id": "v21-real-device-acceptance-campaign",
+      "area": "validation",
+      "status": "verified",
+      "title": "Portable staged acceptance and evidence bundles",
+      "description": "The self-test campaign CLI runs pilot or six-stage acceptance on an existing target device, checks complete comparisons and identity continuity, preserves first failures, and archives environment, stage reports and SHA-256 evidence. Software workflow verified; real-card compatibility, power-conditioned results and real SDC sensitivity remain unvalidated. No cloud provisioning or billing controls.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_selftest_acceptance.py",
+        "python scripts/verify_v2_install.py (core-only installed wheel)",
+        "Follow docs/v2.1/hardware-acceptance.md for real-card evidence; do not infer target validation from software CI."
+      ],
+      "source_of_truth": [
+        "src/omnismi/selftest/acceptance.py",
+        "docs/v2.1/hardware-acceptance.md"
       ]
     }
   ]

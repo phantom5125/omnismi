@@ -29,6 +29,8 @@ plus an English-first [local dashboard](docs/v2.1/dashboard.md) with guided comm
 source-linked hardware module maps, and
 RTX 5090 / B300 / MI355X / TPU v6e presets (real-card validation pending).
 See the [2.1 guide and coverage limits](docs/v2.1/hardware-selftest.md).
+For real cards, follow the [staged acceptance guide](docs/v2.1/hardware-acceptance.md)
+with `omnismi self-test campaign` on an existing Pod, VM or local device.
 This preview does not certify every physical unit; PPU SDC execution is pending.
 The commands below still describe the published **2.0.0** release.
 

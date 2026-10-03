@@ -10,10 +10,15 @@ from .targets import target_catalog, target_profile
 
 
 def run(argv):
+    if argv and argv[0] == "campaign":
+        from .acceptance import run as run_campaign
+
+        return run_campaign(argv[1:])
     parser = argparse.ArgumentParser(
         prog="omnismi self-test",
         description="Compare accelerator operators against CPU references. "
         "PASS is not a whole-device health certificate.",
+        epilog="For multi-stage acceptance: omnismi self-test campaign --help",
     )
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument(
