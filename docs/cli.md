@@ -3,6 +3,8 @@
 Install Omnismi 2.0.0 using the [quickstart](quickstart.md).
 `python -m omnismi` and the `omnismi` console command invoke the same CLI.
 The small Python API remains available independently of the command-line tools.
+Omnismi's [product direction](why-omnismi.md) treats the CLI and structured reports
+as primary interfaces for people and agents; Python is an optional integration.
 
 ## Discovery and visibility
 
@@ -45,6 +47,18 @@ New report commands emit JSON with `schema_version`, `report_type`, `status`,
 construction and SDK compilation return 0. For codes 0–3, retain the JSON even
 when the process exit is nonzero. The [quickstart](quickstart.md) includes checked
 examples and their expected results.
+
+## 2.1 development preview
+
+The current development branch adds `omnismi self-test --plan/--run` with
+CPU-reference operator checks. Install that branch to use it; it is not part of
+the published 2.0.0 package. See the [self-test guide](v2.1/hardware-selftest.md)
+for supported adapters, budgets and coverage limitations.
+
+This command currently emits JSON with `config`, `coverage`, `results` and
+`failures` after execution, rather than the 2.0 diagnostic report envelope above.
+Human summaries and a common capability/schema convention remain planned.
+Do not assume every command accepts `-o` or uses identical exit-code semantics.
 
 ## Choosing a device
 

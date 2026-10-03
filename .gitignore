@@ -66,3 +66,6 @@ Thumbs.db
 # Docs
 site/
 .ai/
+
+# Dashboard development
+node_modules/

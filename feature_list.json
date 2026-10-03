@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-04-24",
+  "updated_at": "2026-10-03",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -1177,6 +1177,143 @@
       "source_of_truth": [
         "docs/roadmap.md",
         "app_spec.txt"
+      ]
+    },
+    {
+      "id": "product-tool-positioning",
+      "area": "product",
+      "status": "verified",
+      "title": "Tool-first product direction for people and agents",
+      "description": "The product is cross-vendor accelerator tooling with CLI/report contracts and optional Python integration; scope complements compute frameworks.",
+      "verification": [
+        "python -m mkdocs build --strict",
+        "python scripts/verify_quickstart.py"
+      ],
+      "source_of_truth": [
+        "app_spec.txt",
+        "README.md",
+        "docs/why-omnismi.md",
+        "docs/roadmap.md"
+      ]
+    },
+    {
+      "id": "cli-diagnostic-human-reports",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Human summaries for diagnostic and self-test workflows",
+      "description": "Render findings, next steps and coverage from the same reports used by agents; newer commands currently primarily return JSON.",
+      "verification": [
+        "Implement renderers and test parity with structured report conclusions."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "docs/why-omnismi.md"
+      ]
+    },
+    {
+      "id": "agent-capability-discovery",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Machine-readable workflow and backend capabilities",
+      "description": "Expose prerequisites, supported checks and unavailable reasons without trial-running workloads or reparsing vendor manuals.",
+      "verification": [
+        "Implement capability discovery and cross-vendor contract fixtures."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "app_spec.txt"
+      ]
+    },
+    {
+      "id": "portable-report-and-device-contracts",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Versioned reports and resolved device identities",
+      "description": "Document schema compatibility, units, provenance, visibility and failure semantics; preserve management/runtime index differences and unknown capability outcomes.",
+      "verification": [
+        "Validate a shared client against multiple vendor reports and unavailable capability fixtures."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md",
+        "docs/why-omnismi.md"
+      ]
+    },
+    {
+      "id": "tool-distribution-integrations",
+      "area": "roadmap",
+      "status": "planned",
+      "title": "Evaluate easier CLI distribution and optional integrations",
+      "description": "Evaluate standalone/container distribution and SDK/MCP wrappers around existing report contracts. No standalone binary or MCP server currently ships.",
+      "verification": [
+        "Select and validate deployment targets before documenting installation or integration availability."
+      ],
+      "source_of_truth": [
+        "docs/roadmap.md"
+      ]
+    },
+    {
+      "id": "v21-cpu-reference-selftest",
+      "area": "validation",
+      "status": "awaiting_validation",
+      "title": "CPU-reference operator self-tests for silent errors",
+      "description": "The 2.1 preview implements topk and other operator checks, bounded workers, evidence artifacts and interleaved load. Software tests passed; target-card validation, PPU SDC execution and physical-unit coverage remain incomplete.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_selftest.py tests/test_selftest_frameworks.py",
+        "Collect target-card reports using docs/v2.1/hardware-selftest.md."
+      ],
+      "source_of_truth": [
+        "src/omnismi/selftest",
+        "docs/v2.1/hardware-selftest.md"
+      ]
+    },
+    {
+      "id": "v21-selftest-dashboard",
+      "area": "cli",
+      "status": "verified",
+      "title": "Local hardware self-test dashboard and guided commands",
+      "description": "Bundled English-first UI reuses the project logo, renders self-test evidence, unknown coverage, local JSON import/export and guided commands. Source-linked hardware module diagrams explain RTX 5090, B300, MI355X and TPU v6e architecture, scoped operator evidence and test gaps. Loopback-only viewer; no HTTP workload execution.",
+      "verification": [
+        "npm --prefix frontend test",
+        "PYTHONPATH=src pytest -q tests/test_dashboard.py",
+        "Browser QA: real CLI plans/unavailable reports, labelled demo, filters, export, command builder and mobile layout.",
+        "Browser QA: English copy, original logo, four hardware maps, model-scoped evidence, module navigation and responsive layouts."
+      ],
+      "source_of_truth": [
+        "src/omnismi/dashboard",
+        "frontend",
+        "docs/v2.1/dashboard.md",
+        "src/omnismi/selftest/hardware.json"
+      ]
+    },
+    {
+      "id": "v21-first-target-presets",
+      "area": "validation",
+      "status": "awaiting_validation",
+      "title": "RTX 5090, B300, MI355X and TPU v6e self-test presets",
+      "description": "Shared target catalog and runtime model guards; TPU v6e BF16 load and FP32/BF16/INT32 extended plan. Software tests passed; all four await real-card evidence and physical-unit coverage.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_selftest_targets.py",
+        "Collect actual-card smoke, extended and soak reports using docs/v2.1/dashboard.md."
+      ],
+      "source_of_truth": [
+        "src/omnismi/selftest/targets.json",
+        "docs/v2.1/dashboard.md"
+      ]
+    },
+    {
+      "id": "v21-real-device-acceptance-campaign",
+      "area": "validation",
+      "status": "verified",
+      "title": "Portable staged acceptance and evidence bundles",
+      "description": "The self-test campaign CLI runs pilot or six-stage acceptance on an existing target device, checks complete comparisons and identity continuity, preserves first failures, and archives environment, stage reports and SHA-256 evidence. Software workflow verified; real-card compatibility, power-conditioned results and real SDC sensitivity remain unvalidated. No cloud provisioning or billing controls.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_selftest_acceptance.py",
+        "python scripts/verify_v2_install.py (core-only installed wheel)",
+        "Follow docs/v2.1/hardware-acceptance.md for real-card evidence; do not infer target validation from software CI."
+      ],
+      "source_of_truth": [
+        "src/omnismi/selftest/acceptance.py",
+        "docs/v2.1/hardware-acceptance.md"
       ]
     }
   ]

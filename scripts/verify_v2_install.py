@@ -9,8 +9,10 @@ from importlib.metadata import version
 from importlib.resources import files
 
 import omnismi
+from omnismi.dashboard.server import create_server
 from omnismi.diagnostics import decode_error
 from omnismi.diagnostics.catalog import load_catalog
+from omnismi.selftest.targets import target_catalog
 
 assert "site-packages" in omnismi.__file__, "Install the wheel without PYTHONPATH first"
 assert version("omnismi") == omnismi.__version__, "Package and runtime versions differ"
@@ -32,6 +34,9 @@ with tempfile.TemporaryDirectory() as temporary:
         "sail-build",
         "bench matmul",
         "bench suite",
+        "self-test",
+        "self-test campaign",
+        "dashboard",
     ):
         result = subprocess.run(
             [sys.executable, "-m", "omnismi", *command.split(), "--help"],
@@ -42,6 +47,48 @@ with tempfile.TemporaryDirectory() as temporary:
             timeout=10,
         )
         assert result.returncode == 0, (command, result.stderr)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "omnismi",
+            "self-test",
+            "--plan",
+            "--target",
+            "rtx-5090",
+        ],
+        cwd=temporary,
+        env=environment,
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["executed"] is False
+    assert json.loads(result.stdout)["target"]["id"] == "rtx-5090"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "omnismi",
+            "self-test",
+            "campaign",
+            "--plan",
+            "--target",
+            "b300",
+            "--suite",
+            "acceptance",
+        ],
+        cwd=temporary,
+        env=environment,
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    campaign = json.loads(result.stdout)
+    assert campaign["report_type"] == "hardware_acceptance"
+    assert campaign["executed"] is False and len(campaign["stages"]) == 6
     result = subprocess.run(
         [sys.executable, "-m", "omnismi", "diagnose", "--input", "-"],
         input="[ 1.0] NVRM: Xid (PCI:0000:03:00): 48, observed error\n",
@@ -55,4 +102,28 @@ with tempfile.TemporaryDirectory() as temporary:
     assert (
         json.loads(result.stdout)["scope"]["current_hardware_health"] == "INCONCLUSIVE"
     )
-print("Installed wheel: catalog, native sources and eight CLI entry points passed")
+
+assert len(target_catalog()["targets"]) == 4
+hardware_maps = json.loads(
+    files("omnismi.selftest").joinpath("hardware.json").read_text()
+)
+assert {item["id"] for item in hardware_maps["profiles"]} == {
+    item["id"] for item in target_catalog()["targets"]
+}
+assert any(
+    asset.name.startswith("OMNIsmi-") and asset.name.endswith(".svg")
+    for asset in files("omnismi.dashboard").joinpath("static/assets").iterdir()
+)
+server = create_server(0)
+assert server.server_address[0] == "127.0.0.1"
+server.server_close()
+assert files("omnismi.dashboard").joinpath("static/index.html").is_file()
+assert (
+    files("omnismi.dashboard")
+    .joinpath("static/assets/third-party-licenses.txt")
+    .is_file()
+)
+print(
+    "Installed wheel: catalog, native sources, eleven CLI entry points, "
+    "dashboard assets, target self-test and campaign plans passed"
+)

@@ -1,10 +1,10 @@
-"""Omnismi: unified, minimal accelerator observability API."""
+"""Python integration for Omnismi's cross-vendor accelerator tooling."""
 
 from omnismi.api import GPU, count, gpu, gpus
 from omnismi.errors import BackendError, OmnismiError, ValidationError
 from omnismi.models import GPUMetrics, GPUInfo
 
-__version__ = "2.0.0"
+__version__ = "2.1.0.dev0"
 
 __all__ = [
     "BackendError",

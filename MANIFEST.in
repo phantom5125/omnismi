@@ -1,0 +1,4 @@
+include frontend/package.json frontend/package-lock.json frontend/vite.config.js frontend/index.html
+recursive-include frontend/src *.js *.jsx *.css
+recursive-include frontend/public *.txt
+include docs/assets/OMNIsmi.svg

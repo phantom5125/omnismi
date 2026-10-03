@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-09-30",
+  "selection_basis": "Owner priorities and runtime diversity; not a ranking of hardware defect rates or measured popularity.",
+  "targets": [
+    {
+      "id": "rtx-5090",
+      "name": "NVIDIA GeForce RTX 5090",
+      "short_name": "RTX 5090",
+      "vendor": "nvidia",
+      "family": "Blackwell / GeForce",
+      "runtime": "CUDA / PyTorch",
+      "priority": 1,
+      "name_pattern": "\\brtx\\s+5090\\b",
+      "dtypes": [
+        "float32",
+        "float16",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "float16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Check topk values and indices, near ties, layouts and repeatability.",
+      "requirements": "Use a compatible CUDA PyTorch build and driver. Start with Quick.",
+      "gaps": "Real-device validation pending. FP4/FP8 and full memory/unit coverage are not included.",
+      "sources": [
+        {
+          "label": "NVIDIA product specifications",
+          "url": "https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5090/"
+        },
+        {
+          "label": "PyTorch correctness issue (software context)",
+          "url": "https://github.com/pytorch/pytorch/issues/189567"
+        }
+      ]
+    },
+    {
+      "id": "b300",
+      "name": "NVIDIA B300",
+      "short_name": "B300",
+      "vendor": "nvidia",
+      "family": "Blackwell Ultra",
+      "runtime": "CUDA / PyTorch",
+      "priority": 2,
+      "name_pattern": "\\bb300\\b",
+      "dtypes": [
+        "float32",
+        "float16",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "float16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Check topk independently of sort, then repeat checks around matrix load.",
+      "requirements": "Test one visible device at a time. Power observations need a matching device UUID.",
+      "gaps": "Real-device validation pending. A single-device run does not cover DGX or NVLink.",
+      "sources": [
+        {
+          "label": "NVIDIA DGX B300 guide",
+          "url": "https://docs.nvidia.com/dgx/dgxb300-user-guide/introduction-to-dgxb300.html"
+        },
+        {
+          "label": "CUDA 13.0.1 release notes",
+          "url": "https://docs.nvidia.com/cuda/archive/13.0.1/pdf/CUDA_Toolkit_Release_Notes.pdf"
+        }
+      ]
+    },
+    {
+      "id": "mi355x",
+      "name": "AMD Instinct MI355X",
+      "short_name": "MI355X",
+      "vendor": "amd",
+      "family": "AMD Instinct",
+      "runtime": "ROCm / PyTorch",
+      "priority": 3,
+      "name_pattern": "\\bmi355x\\b",
+      "dtypes": [
+        "float32",
+        "float16",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "float16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Compare FP32, FP16 and BF16. Keep ROCm versions with each report.",
+      "requirements": "Use a compatible ROCm PyTorch build for MI355X. A CUDA build cannot run this path.",
+      "gaps": "Real-device validation pending. MXFP4, MoE and multi-GPU links are not tested.",
+      "sources": [
+        {
+          "label": "AMD product specifications",
+          "url": "https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x.html"
+        },
+        {
+          "label": "ROCm AITER accuracy issue (software context)",
+          "url": "https://github.com/ROCm/aiter/issues/4012"
+        }
+      ]
+    },
+    {
+      "id": "tpu-v6e",
+      "name": "Google TPU v6e",
+      "short_name": "TPU v6e",
+      "vendor": "google",
+      "family": "Trillium",
+      "runtime": "JAX / TPU",
+      "priority": 4,
+      "name_pattern": "\\btpu\\s+v6(?:e)?\\b",
+      "dtypes": [
+        "float32",
+        "bfloat16",
+        "int32"
+      ],
+      "load_dtype": "bfloat16",
+      "adapter_status": "implemented",
+      "hardware_validation": "pending",
+      "unit_coverage": "unknown",
+      "focus": "Check exact top_k and BF16/FP32 results on a specific local device.",
+      "requirements": "Use a working JAX/TPU runtime on a TPU VM. Choose one local device.",
+      "gaps": "Real-device validation pending. Physical layouts, ICI and the whole slice are not verified.",
+      "sources": [
+        {
+          "label": "Google TPU v6e documentation",
+          "url": "https://docs.cloud.google.com/tpu/docs/v6e"
+        },
+        {
+          "label": "TPU bfloat16 behavior",
+          "url": "https://docs.cloud.google.com/tpu/docs/bfloat16"
+        }
+      ]
+    }
+  ]
+}

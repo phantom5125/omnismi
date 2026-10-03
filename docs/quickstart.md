@@ -2,6 +2,10 @@
 
 [中文上手指南](quickstart.zh-CN.md)
 
+Omnismi is a command-line tool for people and agents. You can use it without
+writing Python; the current distribution uses Python to install and run the CLI.
+The [Python API](api.md) is an optional integration entry point.
+
 Start with an offline result on any Linux or macOS laptop. Add a vendor runtime
 only when you move to a hardware host. Python 3.9+ is required; Python 3.12 is a
 tested starting point. Linux is required for live sysfs topology and SDK builds.

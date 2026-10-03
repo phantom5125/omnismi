@@ -2,24 +2,33 @@ Omnismi Project Spec
 ====================
 
 Project type
-- Omnismi is a Python library, not a web app or long-running service.
-- Anthropic-style harness rules still apply, but `init.sh` should bootstrap the package and run validation instead of starting a server.
+- Omnismi is a cross-vendor accelerator tool for people and AI agents.
+- The CLI and structured reports are primary interfaces; the Python API is a supported integration surface.
+- Python is the current implementation and distribution mechanism, not a limit on product scope. A standalone binary and MCP server are not currently shipped.
+- `init.sh` bootstraps the package and validates it; the current tool does not require a long-running service.
 
 Product goal
-- Provide a compact, stable, cross-vendor accelerator observability API for AI agents and Python applications.
-- Current in-scope accelerators are NVIDIA GPUs, AMD GPUs, and experimental Google TPUs.
-- Long-term expansion should add more vendors without breaking the public API contract.
+- Let humans, agents and applications reuse inspection, diagnosis and validation workflows across supported accelerators.
+- Normalize device discovery, metrics, error interpretation, performance baselines, topology and correctness evidence while retaining meaningful vendor differences.
+- Cover NVIDIA, AMD, Google TPU, Alibaba PPU and Cambricon MLU with explicit capability and hardware-validation status per workflow.
+- Complement compute frameworks: reuse PyTorch/JAX/native SDK execution where appropriate; keep general tensor APIs, autograd, model compilation and arbitrary model migration outside Omnismi's scope.
+- Maintain Python API compatibility without requiring new product workflows to fit the existing small API.
 
 Primary users
-- Coding agents that need portable accelerator preflight checks.
-- Python applications that need normalized accelerator inventory and metrics.
-- Contributors validating vendor/runtime parity against ground-truth libraries.
+- People inspecting accelerator hosts, debugging failures and validating hardware.
+- Agents that need bounded, structured, source-backed hardware evidence without repeatedly parsing vendor tools or manuals.
+- Applications and operational scripts in any language that can invoke the CLI and consume JSON; Python applications may also use the library.
+- Contributors validating adapters and compute results against vendor readings and independent CPU references.
 
-Current public contract
+Current tool and SDK contracts
+- CLI: overview/doctor/validate-spec plus diagnostics, perf-doctor, topology, bounded probes and SDK collector builds.
+- 2.1 preview: `self-test --plan/--run` with CPU-reference checks; PPU SDC execution and physical-unit coverage remain pending.
+- `self-test campaign --plan/--run` stages one-device acceptance, preserving environment, identity, per-stage reports and checksummed evidence. It does not provision cloud resources; normal-card PASS does not measure real SDC sensitivity.
+- Output contracts are command-specific today. Overview supports table/JSON/YAML; newer diagnostics and self-test primarily emit JSON. Full human rendering and capability discovery are planned.
 - Top-level API: `omnismi.count()`, `omnismi.gpus()`, `omnismi.gpu(index)`.
 - Device object: `GPU.index`, `GPU.info()`, `GPU.metrics()`, `GPU.realtime()`.
 - Public models: `GPUInfo`, `GPUMetrics`.
-- Supported public vendors today: `nvidia`, `amd`, `google`.
+- Public vendor identifiers: `nvidia`, `amd`, `google`, `alibaba`, `cambricon`; availability and validation differ by workflow.
 - `GPU` / `gpus()` names are historical API names and currently also cover the experimental Google TPU backend.
 
 Public model fields
@@ -27,18 +36,25 @@ Public model fields
 - `GPUMetrics`: `index`, `utilization_percent`, `memory_used_bytes`, `memory_total_bytes`, `temperature_c`, `power_w`, `core_clock_mhz`, `memory_clock_mhz`, `timestamp_ns`.
 
 Hard invariants
-- Public API names stay minimal and stable. Do not introduce `get_*` aliases.
+- Existing Python API names stay minimal and stable. Do not introduce `get_*` aliases. This constraint does not limit CLI/report/worker capabilities.
 - `utilization_percent` means vendor-reported top-level compute/graphics engine activity. Do not relabel it as SM occupancy or CU occupancy.
 - Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
 - Unavailable metrics default to `None` instead of raising in normal user flows.
 - Backend-specific exceptions must not leak through the default public API path.
 - Backend implementation details stay out of user-facing API docs unless required for compatibility notes.
 - Vendor onboarding must preserve the existing `count/gpus/gpu` and `info/metrics` contract.
+- Human and agent presentations should derive from the same evidence; introduce report/schema changes with explicit compatibility rules.
+- Preserve physical/logical identity, visibility scope and missing-capability reasons; never equate management and runtime indexes by ordinal alone.
+- Offline interpretation, management queries and planning must not require a compute framework or start compute workloads.
+- Workloads require explicit execution with bounded resource/time settings. No runtime dependency installers or silent CPU fallback for a claimed accelerator run.
+- Test coverage and hardware attribution must remain evidence-based; an operator PASS does not certify every physical unit or whole-device health.
 
 Current backend behavior
 - NVIDIA uses `nvidia-ml-py` (`pynvml`) and supports cached psutil-style sampling plus `GPU.realtime()` for forced live reads.
 - AMD uses `amdsmi` with compatibility fallbacks for handle discovery, temperature, power, and clocks, plus cached psutil-style sampling and `GPU.realtime()`.
 - Google TPU uses `libtpu.sdk.tpumonitoring` for local snapshot metrics such as duty cycle and HBM usage. Temperature, power, clocks, and parity tooling are still unavailable.
+- Alibaba PPU collection uses SAIL PPU-SMI and optional native SDK probes; the new 2.1 SDC worker is still pending.
+- Cambricon MLU collection uses the SDK-compiled CNDEV collector; the 2.1 compute path uses torch_mlu and awaits target-card validation.
 - The backend registry instantiates known backends lazily, filters unavailable ones, and closes them at process exit.
 
 Validation contract
@@ -47,7 +63,7 @@ Validation contract
 - Optional hardware parity checks:
   - `PYTHONPATH=src python -m omnismi.validation.parity --vendor nvidia --samples 3`
   - `PYTHONPATH=src python -m omnismi.validation.parity --vendor amd --samples 3`
-- Public-facing changes must update tests and docs in the same session.
+- Behavioral public-contract changes must update tests and docs in the same session. Documentation-only changes need relevant documentation/example validation.
 
 Current non-goals
 - Reintroducing runtime dependency installers or legacy 0.x APIs.
@@ -65,32 +81,22 @@ Environment compatibility goals
   Omnismi should aim to expose the same visible logical device set in the
   discovery layer, or explain mismatches clearly through diagnostics.
 
+Dashboard preview
+- English-first, plain-language UI reuses docs/assets/OMNIsmi.svg. Hardware maps explain vendor-documented modules, with source links and explicit test gaps. Operator evidence never becomes physical-unit coverage or fault localization.
+- `omnismi dashboard` serves a bundled local-only report viewer and guided command builder. Humans and agents use the same hardware_selftest schema. No HTTP workload execution.
+- RTX 5090, B300, MI355X and TPU v6e presets are implemented, with runtime model guards and pending real-card validation.
+
 Planned frontier
-- More hardware validation evidence for existing NVIDIA and AMD adapters.
-- Better backend diagnostics and debug visibility.
-- A default `omnismi` CLI experience that gives a modern, cross-vendor machine
-  summary similar in spirit to `nvidia-smi`, but cleaner and more
-  automation-friendly.
-- The main CLI entry should be human-first by default: concise terminal summary
-  first, explicit `json`/`yaml` output on demand, and deeper detail moved into
-  `--wide`, `doctor`, `bench`, and `validate-spec`.
-- CLI-first machine profile and spec-validation workflows that can confirm whether
-  detected hardware matches expected capacity, bandwidth, and throughput classes.
-- The first `validate-spec` slice should stay discovery-first: compare current
-  inventory against curated profiles and explicit runtime context now, then add
-  benchmark evidence later without breaking the report shape.
-- Vendor-agnostic benchmark probes for trustable memory-bandwidth and compute
-  sanity checks, kept separate from vendor sample applications.
-- The first benchmark slice should prioritize a portable `bandwidth` probe with
-  stable `table/json/yaml` output and honest `INCONCLUSIVE` verdicts before the
-  profile registry grows sustained-bandwidth thresholds.
-- Future CLI/report surfaces should keep one stable machine-readable object model
-  across `json` and `yaml`, with human table output as a projection layer.
-- Future Intel/Apple adapter work.
-- Possible later review of scheduler/runtime integration helpers after the core observability layer is mature.
+- Validate the 2.1 CPU-reference suite on target cards; add native unit observations, power-conditioned checks and the PPU SAIL SDC worker.
+- Complete concise human output for diagnostic workflows, rendered from the same report consumed by agents.
+- Publish versioned report schemas, capability discovery, prerequisite/failure semantics and explicit compatibility rules across commands.
+- Resolve device identities consistently while retaining global management indexes, local runtime indexes, partitions and visibility masks.
+- Accept portability with shared inspection/validation clients across vendor fixtures and hardware evidence, not by claiming identical capabilities.
+- Evaluate simpler CLI distribution and optional SDK/MCP integration once report contracts settle. No binary or MCP availability is implied.
+- Expand hardware validation and vendor support while preserving the Python integration contract.
 
 Session workflow
 - Start by reading `app_spec.txt`, `feature_list.json`, `claude-progress.txt`, and `docs/agent-playbook.md`.
-- Run `./init.sh` before making changes unless there is a clear reason not to.
+- Run `./init.sh` for baseline behavioral work; use targeted docs/example checks for documentation-only changes.
 - Prefer one discrete feature or validation item per session.
 - When work is done, update `feature_list.json` status/evidence, append a short note to `claude-progress.txt`, and keep tests green.

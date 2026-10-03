@@ -10,12 +10,29 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/phantom5125/omnismi)](https://github.com/phantom5125/omnismi/releases/latest)
 
-Cross-vendor accelerator observability and structured diagnostics for Python apps
-and AI agents. Read normalized metrics, explain error evidence offline, compare
-performance with recorded baselines, and discover topology and affinity.
+**A cross-vendor accelerator tool for people and AI agents.** Inspect devices,
+explain errors, check performance, discover topology and test correctness through
+consistent commands and structured reports. Reuse your inspection and validation
+workflows across supported hardware; Omnismi handles vendor-specific collection
+and execution adapters. The Python API is an integration option.
+
+Omnismi complements compute frameworks by focusing on hardware visibility,
+readiness and diagnostic evidence. See [product direction and framework boundaries](docs/why-omnismi.md)
+for what cross-hardware portability means and which capabilities are still planned.
 
 **Start here:** [Quickstart](docs/quickstart.md) · [中文上手指南](docs/quickstart.zh-CN.md) ·
 [Hardware compatibility](docs/compatibility.md) · [2.0 delivery status](docs/v2/STATUS.md)
+
+**2.1 development preview:** this branch adds opt-in CPU-reference operator
+self-tests, including independent topk checks and interleaved load testing,
+plus an English-first [local dashboard](docs/v2.1/dashboard.md) with guided commands,
+source-linked hardware module maps, and
+RTX 5090 / B300 / MI355X / TPU v6e presets (real-card validation pending).
+See the [2.1 guide and coverage limits](docs/v2.1/hardware-selftest.md).
+For real cards, follow the [staged acceptance guide](docs/v2.1/hardware-acceptance.md)
+with `omnismi self-test campaign` on an existing Pod, VM or local device.
+This preview does not certify every physical unit; PPU SDC execution is pending.
+The commands below still describe the published **2.0.0** release.
 
 ## Install 2.0.0
 

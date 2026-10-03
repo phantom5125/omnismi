@@ -1,0 +1,392 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-10-02",
+  "scope": "Conceptual architecture, not a discovered inventory or physical-unit coverage map.",
+  "mapping_basis": "Operator-to-module associations are Omnismi interpretations, not measured kernel dispatch or vendor diagnostic claims.",
+  "sources": {
+    "rtx": {
+      "label": "NVIDIA RTX Blackwell architecture",
+      "url": "https://images.nvidia.com/aem-dam/Solutions/geforce/blackwell/nvidia-rtx-blackwell-gpu-architecture.pdf"
+    },
+    "blackwell": {
+      "label": "NVIDIA Blackwell tuning guide",
+      "url": "https://docs.nvidia.com/cuda/blackwell-tuning-guide/index.html"
+    },
+    "b300": {
+      "label": "NVIDIA DGX B300 guide",
+      "url": "https://docs.nvidia.com/dgx/dgxb300-user-guide/introduction-to-dgxb300.html"
+    },
+    "cdna4": {
+      "label": "AMD CDNA 4 architecture",
+      "url": "https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-4-architecture-whitepaper.pdf"
+    },
+    "tpu": {
+      "label": "Google TPU v6e architecture",
+      "url": "https://docs.cloud.google.com/tpu/docs/v6e"
+    },
+    "ultra": {
+      "label": "NVIDIA Blackwell Ultra architecture",
+      "url": "https://developer.nvidia.com/blog/?p=104887"
+    }
+  },
+  "profiles": [
+    {
+      "id": "rtx-5090",
+      "group": "Streaming multiprocessors (SMs)",
+      "scope": "Selected blocks of one GPU. Counts, placement and active units are not shown.",
+      "modules": [
+        {
+          "id": "compute",
+          "name": "CUDA cores",
+          "subtitle": "General calculations",
+          "purpose": "Runs arithmetic and selection work across many parallel lanes.",
+          "operators": [
+            "add",
+            "mul",
+            "sum",
+            "sort",
+            "topk"
+          ],
+          "limitation": "Results do not reveal which lanes or units ran. A mismatch cannot locate a faulty core.",
+          "evidence_kind": "operator_checks",
+          "source": "rtx",
+          "section": "Blackwell SM Architecture"
+        },
+        {
+          "id": "matrix",
+          "name": "Tensor Cores",
+          "subtitle": "Matrix calculations",
+          "purpose": "Accelerates matrix multiply and accumulation.",
+          "operators": [
+            "matmul"
+          ],
+          "limitation": "A matmul result does not prove use of this engine. Kernel dispatch and physical-unit coverage are unverified.",
+          "evidence_kind": "dispatch_unverified",
+          "source": "rtx",
+          "section": "Fifth-Generation Tensor Cores"
+        },
+        {
+          "id": "local",
+          "name": "Registers · L1 / shared",
+          "subtitle": "Nearby working data",
+          "purpose": "Keeps temporary values close to the compute units.",
+          "operators": [],
+          "limitation": "No isolated register, cache or shared-memory diagnostic is implemented.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "rtx",
+          "section": "Blackwell SM Architecture"
+        },
+        {
+          "id": "cache",
+          "name": "L2 cache",
+          "subtitle": "Shared data reuse",
+          "purpose": "Reuses data between compute and device memory.",
+          "operators": [],
+          "limitation": "Operator results do not isolate cache behavior or prove coverage of cache slices.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "rtx",
+          "section": "GB202 Architecture"
+        },
+        {
+          "id": "memory",
+          "name": "GDDR7",
+          "subtitle": "Device memory",
+          "purpose": "Stores inputs, intermediate values and outputs.",
+          "operators": [
+            "copy",
+            "gather"
+          ],
+          "limitation": "These are array checks, not an address sweep. Allocated memory, transfer paths and every memory bank are not verified.",
+          "evidence_kind": "operator_checks",
+          "source": "rtx",
+          "section": "GDDR7 Memory"
+        },
+        {
+          "id": "host",
+          "name": "PCIe host link",
+          "subtitle": "CPU ↔ accelerator",
+          "purpose": "Connects the accelerator to its host.",
+          "operators": [],
+          "limitation": "Input and output transfers occur during testing, but there is no dedicated link integrity test.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "rtx",
+          "section": "GeForce RTX 5090 Specifications"
+        },
+        {
+          "id": "special",
+          "name": "RT & media engines",
+          "subtitle": "Ray tracing · video",
+          "purpose": "Handles ray tracing and video encoding or decoding.",
+          "operators": [],
+          "limitation": "The current compute suite has no ray-tracing or video tests.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "rtx",
+          "section": "Fourth-Generation RT Cores; NVENC / NVDEC"
+        }
+      ]
+    },
+    {
+      "id": "b300",
+      "group": "Streaming multiprocessors (SMs)",
+      "scope": "Blackwell-family compute blocks and B300 memory / links. A single GPU view, not the whole DGX system or a die floorplan.",
+      "modules": [
+        {
+          "id": "compute",
+          "name": "CUDA cores",
+          "subtitle": "General calculations",
+          "purpose": "Runs arithmetic and selection work across many parallel lanes.",
+          "operators": [
+            "add",
+            "mul",
+            "sum",
+            "sort",
+            "topk"
+          ],
+          "limitation": "Results do not reveal which lanes or units ran. A mismatch cannot locate a faulty core.",
+          "evidence_kind": "operator_checks",
+          "source": "blackwell",
+          "section": "1.4.1 Streaming Multiprocessor"
+        },
+        {
+          "id": "matrix",
+          "name": "Tensor Cores",
+          "subtitle": "Matrix calculations",
+          "purpose": "Accelerates matrix multiply and accumulation.",
+          "operators": [
+            "matmul"
+          ],
+          "limitation": "A matmul result does not prove use of this engine. Kernel dispatch and physical-unit coverage are unverified.",
+          "evidence_kind": "dispatch_unverified",
+          "source": "ultra",
+          "section": "NVIDIA Tensor Cores, AI compute powerhouses"
+        },
+        {
+          "id": "local",
+          "name": "Registers · L1 / shared",
+          "subtitle": "Nearby working data",
+          "purpose": "Keeps temporary values close to the compute units.",
+          "operators": [],
+          "limitation": "No isolated register, cache or shared-memory diagnostic is implemented.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "blackwell",
+          "section": "1.4.1; 1.4.2.3"
+        },
+        {
+          "id": "cache",
+          "name": "L2 cache",
+          "subtitle": "Shared data reuse",
+          "purpose": "Reuses data between compute and device memory.",
+          "operators": [],
+          "limitation": "Operator results do not isolate cache behavior or prove coverage of cache slices.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "blackwell",
+          "section": "1.4.2.2 L2 Cache"
+        },
+        {
+          "id": "memory",
+          "name": "HBM3E",
+          "subtitle": "Device memory",
+          "purpose": "Stores inputs, intermediate values and outputs.",
+          "operators": [
+            "copy",
+            "gather"
+          ],
+          "limitation": "These are array checks, not an address sweep. Allocated memory, transfer paths and every memory bank are not verified.",
+          "evidence_kind": "operator_checks",
+          "source": "ultra",
+          "section": "Memory: high capacity and bandwidth"
+        },
+        {
+          "id": "host",
+          "name": "PCIe host link",
+          "subtitle": "CPU ↔ accelerator",
+          "purpose": "Connects the accelerator to its host.",
+          "operators": [],
+          "limitation": "Input and output transfers occur during testing, but there is no dedicated link integrity test.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "ultra",
+          "section": "Interconnect: built for scale"
+        },
+        {
+          "id": "peer",
+          "name": "NVLink",
+          "subtitle": "Accelerator ↔ accelerator",
+          "purpose": "Moves data between connected accelerators.",
+          "operators": [],
+          "limitation": "Single-device tests do not exercise peer-to-peer traffic or verify this link.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "b300",
+          "section": "DGX B300 Feature Summary"
+        }
+      ]
+    },
+    {
+      "id": "mi355x",
+      "group": "Compute units (CUs) within XCDs",
+      "scope": "Selected CDNA 4 blocks. An XCD is a compute chiplet; repeated chiplets, cache slices and physical placement are simplified.",
+      "modules": [
+        {
+          "id": "compute",
+          "name": "Vector ALUs",
+          "subtitle": "General calculations",
+          "purpose": "Runs arithmetic and selection work across many parallel lanes.",
+          "operators": [
+            "add",
+            "mul",
+            "sum",
+            "sort",
+            "topk"
+          ],
+          "limitation": "Results do not reveal which lanes or units ran. A mismatch cannot locate a faulty core.",
+          "evidence_kind": "operator_checks",
+          "source": "cdna4",
+          "section": "CDNA 4 Compute · Figure 3 (p. 6)"
+        },
+        {
+          "id": "matrix",
+          "name": "Matrix Cores",
+          "subtitle": "Matrix calculations",
+          "purpose": "Accelerates matrix multiply and accumulation.",
+          "operators": [
+            "matmul"
+          ],
+          "limitation": "A matmul result does not prove use of this engine. Kernel dispatch and physical-unit coverage are unverified.",
+          "evidence_kind": "dispatch_unverified",
+          "source": "cdna4",
+          "section": "CDNA 4 Compute · Figure 3 (p. 6)"
+        },
+        {
+          "id": "local",
+          "name": "Registers · LDS / L1",
+          "subtitle": "Nearby working data",
+          "purpose": "Keeps temporary values close to the compute units.",
+          "operators": [],
+          "limitation": "No isolated register, cache or shared-memory diagnostic is implemented.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "cdna4",
+          "section": "Memory hierarchy (pp. 9–10)"
+        },
+        {
+          "id": "cache",
+          "name": "L2 · Infinity Cache",
+          "subtitle": "Shared data reuse",
+          "purpose": "Reuses data between compute and device memory.",
+          "operators": [],
+          "limitation": "Operator results do not isolate cache behavior or prove coverage of cache slices.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "cdna4",
+          "section": "Memory hierarchy · Figure 5 (p. 10)"
+        },
+        {
+          "id": "memory",
+          "name": "HBM3E",
+          "subtitle": "Device memory",
+          "purpose": "Stores inputs, intermediate values and outputs.",
+          "operators": [
+            "copy",
+            "gather"
+          ],
+          "limitation": "These are array checks, not an address sweep. Allocated memory, transfer paths and every memory bank are not verified.",
+          "evidence_kind": "operator_checks",
+          "source": "cdna4",
+          "section": "MI350 series specifications (p. 19)"
+        },
+        {
+          "id": "host",
+          "name": "PCIe host link",
+          "subtitle": "CPU ↔ accelerator",
+          "purpose": "Connects the accelerator to its host.",
+          "operators": [],
+          "limitation": "Input and output transfers occur during testing, but there is no dedicated link integrity test.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "cdna4",
+          "section": "Communication, Scaling, and Systems (p. 13)"
+        },
+        {
+          "id": "peer",
+          "name": "Infinity Fabric",
+          "subtitle": "Accelerator ↔ accelerator",
+          "purpose": "Moves data between connected accelerators.",
+          "operators": [],
+          "limitation": "Single-device tests do not exercise peer-to-peer traffic or verify this link.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "cdna4",
+          "section": "Communication, Scaling, and Systems (p. 13)"
+        }
+      ]
+    },
+    {
+      "id": "tpu-v6e",
+      "group": "TensorCore",
+      "scope": "Selected blocks of one v6e chip. Storage details and physical placement are omitted; this is not a whole TPU slice.",
+      "modules": [
+        {
+          "id": "compute",
+          "name": "Vector & scalar units",
+          "subtitle": "General calculations",
+          "purpose": "Processes vector operations and scalar control work.",
+          "operators": [
+            "add",
+            "mul",
+            "sum",
+            "sort",
+            "topk"
+          ],
+          "limitation": "XLA chooses the execution path. Results do not identify individual units or prove their coverage.",
+          "evidence_kind": "dispatch_unverified",
+          "source": "tpu",
+          "section": "System architecture"
+        },
+        {
+          "id": "matrix",
+          "name": "MXUs",
+          "subtitle": "Matrix calculations",
+          "purpose": "Accelerates matrix multiply and accumulation.",
+          "operators": [
+            "matmul"
+          ],
+          "limitation": "A matmul result does not prove use of this engine. Kernel dispatch and physical-unit coverage are unverified.",
+          "evidence_kind": "dispatch_unverified",
+          "source": "tpu",
+          "section": "System architecture"
+        },
+        {
+          "id": "memory",
+          "name": "HBM",
+          "subtitle": "Device memory",
+          "purpose": "Stores inputs, intermediate values and outputs.",
+          "operators": [
+            "copy",
+            "gather"
+          ],
+          "limitation": "These are array checks, not an address sweep. Allocated memory, transfer paths and every memory bank are not verified.",
+          "evidence_kind": "operator_checks",
+          "source": "tpu",
+          "section": "System architecture"
+        },
+        {
+          "id": "peer",
+          "name": "ICI",
+          "subtitle": "Accelerator ↔ accelerator",
+          "purpose": "Moves data between connected accelerators.",
+          "operators": [],
+          "limitation": "Single-device tests do not exercise peer-to-peer traffic or verify this link.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "tpu",
+          "section": "System architecture"
+        },
+        {
+          "id": "special",
+          "name": "SparseCore",
+          "subtitle": "Embedding workloads",
+          "purpose": "Accelerates sparse embedding workloads.",
+          "operators": [],
+          "limitation": "No SparseCore or embedding-specific test is implemented.",
+          "evidence_kind": "no_dedicated_check",
+          "source": "tpu",
+          "section": "System architecture: Special features"
+        }
+      ]
+    }
+  ]
+}

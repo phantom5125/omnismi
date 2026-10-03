@@ -6,6 +6,7 @@ import json
 import os
 import time
 
+from omnismi import __version__
 from omnismi.backends.base import BaseBackend
 from omnismi.cli import main
 from omnismi.models import GPUMetrics, GPUInfo
@@ -139,7 +140,7 @@ def test_bench_bandwidth_table_output(backend_factories, monkeypatch, capsys) ->
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "Omnismi Bench v2.0.0 [Host: worker-a17] [Probe: bandwidth] [Status: INCONCLUSIVE]" in captured.out
+    assert f"Omnismi Bench v{__version__} [Host: worker-a17] [Probe: bandwidth] [Status: INCONCLUSIVE]" in captured.out
     assert "copy_fp32_256.0mb" in captured.out
     assert "512.0GB/s" in captured.out
     assert "execution_status=success" in captured.out

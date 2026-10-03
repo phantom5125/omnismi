@@ -2,6 +2,10 @@
 
 [English quickstart](quickstart.md)
 
+Omnismi 是面向人和 agent 的跨厂商加速器工具，直接运行命令即可，不需要编写
+Python 程序。当前通过 Python 环境安装和运行 CLI，Python API 是可选的集成入口。
+跨卡型复用的目标是发现、诊断和验证流程，具体边界见[产品定位](why-omnismi.md)。
+
 先在普通电脑上跑通离线诊断，再到加速卡机器配置厂商环境。核心包不要求
 GPU、SDK 或 PyTorch。以下安装命令适用于 Linux / macOS，要求 Python 3.9+；
 Python 3.12 是已经测试的起点。实时 sysfs 拓扑采集和 SDK 编译需要 Linux。
