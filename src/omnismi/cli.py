@@ -4,17 +4,30 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from omnismi import __version__
-from omnismi.api import gpus
-from omnismi.preflight import build_inventory, build_preflight, device_snapshot
-from omnismi.visibility import filter_gpus_by_visibility
+from omnismi.preflight import build_inventory, build_metrics, build_preflight
 
 
 def _gib_to_bytes(gib: float) -> int:
     return int(gib * (1024**3))
+
+
+def _nonnegative_int(raw: str) -> int:
+    value = int(raw)
+    if value < 0:
+        raise argparse.ArgumentTypeError("must be a non-negative integer")
+    return value
+
+
+def _nonnegative_gib(raw: str) -> float:
+    value = float(raw)
+    if value < 0 or not math.isfinite(value * (1024**3)):
+        raise argparse.ArgumentTypeError("must be a finite, non-negative GiB value")
+    return value
 
 
 def _emit_json(payload: dict, *, human: bool) -> None:
@@ -56,46 +69,7 @@ def _cmd_inventory(args: argparse.Namespace) -> int:
 
 
 def _cmd_metrics(args: argparse.Namespace) -> int:
-    try:
-        devices = list(gpus())
-        selected, visibility = filter_gpus_by_visibility(
-            devices, visible_only=args.visible_only
-        )
-        rows = []
-        for logical_index, device in enumerate(selected):
-            rows.append(
-                device_snapshot(device, logical_index=logical_index, realtime=True)
-            )
-        exit_code = 0 if rows else 2
-        payload = {
-            "schema_version": 1,
-            "command": "metrics",
-            "ok": exit_code == 0,
-            "exit_code": exit_code,
-            "visibility": {
-                "mode": visibility.mode,
-                "env": visibility.env,
-                "physical_indices": visibility.physical_indices,
-                "logical_indices": visibility.logical_indices,
-            },
-            "devices": rows,
-            "warnings": [],
-            "failures": []
-            if rows
-            else [{"code": "no_accelerators", "message": "no visible accelerators"}],
-            "metrics_mode": "snapshot_realtime",
-        }
-    except Exception as exc:
-        payload = {
-            "schema_version": 1,
-            "command": "metrics",
-            "ok": False,
-            "exit_code": 10,
-            "error": str(exc),
-            "devices": [],
-            "warnings": [],
-            "failures": [{"code": "backend_error", "message": str(exc)}],
-        }
+    payload = build_metrics(visible_only=args.visible_only)
     _emit_json(payload, human=args.human)
     return int(payload.get("exit_code", 1))
 
@@ -149,16 +123,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="one-shot inventory + metrics gate for agents (stable JSON)",
     )
     add_common(pre)
-    pre.add_argument("--min-gpus", type=int, default=0, help="require at least N GPUs")
+    pre.add_argument(
+        "--min-gpus", type=_nonnegative_int, default=0, help="require at least N GPUs"
+    )
     pre.add_argument(
         "--min-free-bytes",
-        type=int,
+        type=_nonnegative_int,
         default=None,
         help="require each GPU to have at least this many free bytes",
     )
     pre.add_argument(
         "--min-free-gib",
-        type=float,
+        type=_nonnegative_gib,
         default=None,
         help="same as --min-free-bytes, in GiB",
     )
@@ -196,6 +172,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         code = exc.code
         if code is None:
             return 0
+        if code == 2:
+            return 1
         return int(code) if isinstance(code, int) else 1
     return int(args.func(args))
 

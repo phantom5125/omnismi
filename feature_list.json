@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-03-12",
+  "updated_at": "2026-10-19",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -29,6 +29,26 @@
     "docs": "mkdocs build --strict"
   },
   "features": [
+    {
+      "id": "agent-cli-review-contracts",
+      "area": "cli",
+      "status": "verified",
+      "title": "Preflight CLI review fixes have CPU-only regression coverage",
+      "description": "Distinct usage exit codes, bounded threshold arguments, consistent snapshot envelopes, and unique CUDA UUID matching are tested without claiming real-device parity.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_preflight.py tests/test_visibility.py",
+        "PYTHONPATH=src pytest -q"
+      ],
+      "source_of_truth": [
+        "src/omnismi/cli.py",
+        "src/omnismi/preflight.py",
+        "src/omnismi/visibility.py",
+        "tests/test_cli_preflight.py",
+        "tests/test_visibility.py",
+        "docs/cli.md",
+        ".github/workflows/agent-cli-checks.yml"
+      ]
+    },
     {
       "id": "harness-app-spec",
       "area": "harness",

@@ -11,6 +11,37 @@ from omnismi.visibility import filter_gpus_by_visibility
 SCHEMA_VERSION = 1
 
 
+def _snapshot_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    free_values = [
+        row["memory_free_bytes"]
+        for row in rows
+        if row.get("memory_free_bytes") is not None
+    ]
+    return {
+        "gpu_count": len(rows),
+        "vendors": sorted({row["vendor"] for row in rows}),
+        "all_free_bytes_min": min(free_values) if free_values else None,
+        "busy_gpu_count": None,
+    }
+
+
+def _backend_error(command: str, exc: Exception) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": command,
+        "ok": False,
+        "exit_code": 10,
+        "ts_ns": time.time_ns(),
+        "error": f"backend_error: {exc}",
+        "summary": _snapshot_summary([]),
+        "warnings": [],
+        "failures": [{"code": "backend_error", "message": str(exc)}],
+        "devices": [],
+        "topology_included": False,
+        "metrics_mode": "snapshot_realtime",
+    }
+
+
 def _memory_free_bytes(used: int | None, total: int | None) -> int | None:
     if used is None or total is None:
         return None
@@ -70,20 +101,8 @@ def build_preflight(
         selected, visibility = filter_gpus_by_visibility(
             all_devices, visible_only=visible_only
         )
-    except Exception as exc:  # pragma: no cover - defensive
-        return {
-            "schema_version": SCHEMA_VERSION,
-            "command": "preflight",
-            "ok": False,
-            "exit_code": 10,
-            "ts_ns": time.time_ns(),
-            "error": f"backend_error: {exc}",
-            "warnings": warnings,
-            "failures": [{"code": "backend_error", "message": str(exc)}],
-            "devices": [],
-            "topology_included": False,
-            "metrics_mode": "snapshot_realtime",
-        }
+    except Exception as exc:
+        return _backend_error("preflight", exc)
 
     device_rows: list[dict[str, Any]] = []
     for logical_index, device in enumerate(selected):
@@ -130,19 +149,10 @@ def build_preflight(
                 )
 
     if require_idle:
-        warnings.append(
-            "processes API not implemented; --require-idle not enforced"
-        )
+        warnings.append("processes API not implemented; --require-idle not enforced")
 
     if include_topology:
         warnings.append("topology API not implemented; topology omitted")
-
-    free_values = [
-        row["memory_free_bytes"]
-        for row in device_rows
-        if row.get("memory_free_bytes") is not None
-    ]
-    vendors = sorted({row["vendor"] for row in device_rows})
 
     if not device_rows:
         exit_code = 2
@@ -172,12 +182,7 @@ def build_preflight(
             "require_idle": require_idle,
             "require_idle_enforced": False,
         },
-        "summary": {
-            "gpu_count": len(device_rows),
-            "vendors": vendors,
-            "all_free_bytes_min": min(free_values) if free_values else None,
-            "busy_gpu_count": None,
-        },
+        "summary": _snapshot_summary(device_rows),
         "devices": device_rows,
         "failures": failures,
         "warnings": warnings,
@@ -200,3 +205,41 @@ def build_inventory(*, visible_only: bool = True) -> dict[str, Any]:
         result["exit_code"] = 0
         result["failures"] = []
     return result
+
+
+def build_metrics(*, visible_only: bool = True) -> dict[str, Any]:
+    """Return one realtime metrics snapshot with the shared JSON envelope."""
+    try:
+        selected, visibility = filter_gpus_by_visibility(
+            list_gpus(), visible_only=visible_only
+        )
+        rows = [
+            device_snapshot(device, logical_index=logical_index, realtime=True)
+            for logical_index, device in enumerate(selected)
+        ]
+    except Exception as exc:
+        return _backend_error("metrics", exc)
+
+    exit_code = 0 if rows else 2
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": "metrics",
+        "ok": exit_code == 0,
+        "exit_code": exit_code,
+        "ts_ns": time.time_ns(),
+        "visibility": {
+            "mode": visibility.mode,
+            "env": visibility.env,
+            "physical_indices": visibility.physical_indices,
+            "logical_indices": visibility.logical_indices,
+        },
+        "summary": _snapshot_summary(rows),
+        "devices": rows,
+        "warnings": [],
+        "failures": (
+            []
+            if rows
+            else [{"code": "no_accelerators", "message": "no visible accelerators"}]
+        ),
+        "metrics_mode": "snapshot_realtime",
+    }

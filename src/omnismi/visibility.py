@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 
 @dataclass(frozen=True)
@@ -20,7 +20,7 @@ class VisibilityContext:
 def parse_cuda_visible_devices(
     raw: str | None = None,
 ) -> list[str] | None:
-    """Return token list from CUDA_VISIBLE_DEVICES, or None if unset/empty means all.
+    """Return CUDA_VISIBLE_DEVICES tokens, or None if unset.
 
     Empty string means no devices visible (NVIDIA semantics).
     Unset means all devices.
@@ -32,7 +32,7 @@ def parse_cuda_visible_devices(
     value = raw.strip()
     if value == "":
         return []
-    return [part.strip() for part in value.split(",") if part.strip() != ""]
+    return [part.strip() for part in value.split(",")]
 
 
 def _uuid_matches(token: str, uuid: str | None) -> bool:
@@ -42,12 +42,8 @@ def _uuid_matches(token: str, uuid: str | None) -> bool:
     u = uuid.lower()
     if t == u:
         return True
-    # Allow GPU- prefix forms
-    if t.startswith("gpu-") and u.startswith("gpu-") and t == u:
-        return True
-    if not t.startswith("gpu-") and u.endswith(t):
-        return True
-    return False
+    # CUDA permits abbreviated GPU UUIDs; the caller must check uniqueness.
+    return t.startswith("gpu-") and len(t) > 4 and u.startswith(t)
 
 
 def filter_gpus_by_visibility(
@@ -100,18 +96,18 @@ def filter_gpus_by_visibility(
         if token.isdigit() or (token.startswith("-") and token[1:].isdigit()):
             idx = int(token)
             device = by_index.get(idx)
-            if device is not None:
-                selected.append(device)
-            continue
-        matched = None
-        for device in devices:
-            info = device.info()  # type: ignore[attr-defined]
-            uuid = getattr(info, "uuid", None)
-            if _uuid_matches(token, uuid):
-                matched = device
-                break
-        if matched is not None:
-            selected.append(matched)
+        else:
+            matches = [
+                device
+                for device in devices
+                if _uuid_matches(token, getattr(device.info(), "uuid", None))
+            ]
+            device = matches[0] if len(matches) == 1 else None
+        # Stop at the first invalid identifier, as CUDA does. A repeated device
+        # must not inflate preflight's GPU count, including mixed index/UUID forms.
+        if device is None or any(device is previous for previous in selected):
+            break
+        selected.append(device)
 
     physical = [int(getattr(d, "index")) for d in selected]
     logical = list(range(len(physical)))

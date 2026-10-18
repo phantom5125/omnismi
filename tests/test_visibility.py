@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from omnismi.visibility import filter_gpus_by_visibility, parse_cuda_visible_devices
 
 
@@ -61,3 +63,43 @@ def test_filter_by_uuid(monkeypatch):
         devices, visible_only=True, cuda_visible_devices="GPU-bbb"
     )
     assert [d.index for d in selected] == [1]
+
+
+@pytest.mark.parametrize(
+    ("token", "expected"),
+    [
+        ("GPU-aaab", [1]),
+        ("gpu-AAAB", [1]),
+        ("GPU-b", [2]),
+        ("GPU-aaa", []),
+        ("GPU-", []),
+        ("aaab", []),
+        ("ab", []),
+        ("b", []),
+        ("missing", []),
+    ],
+)
+def test_uuid_selection_requires_unique_identity(token, expected):
+    devices = [
+        FakeGPU(0, uuid="GPU-aaaa"),
+        FakeGPU(1, uuid="GPU-aaab"),
+        FakeGPU(2, uuid="GPU-bbbb"),
+        FakeGPU(3),
+    ]
+    selected, ctx = filter_gpus_by_visibility(devices, cuda_visible_devices=token)
+    assert [device.index for device in selected] == expected
+    assert ctx.physical_indices == expected
+    assert ctx.logical_indices == list(range(len(expected)))
+
+
+@pytest.mark.parametrize(
+    "invalid_token", ["-1", "99", "GPU-unknown", "GPU-a", "", "0", "GPU-aaaa"]
+)
+def test_invalid_or_duplicate_identifier_stops_visibility(invalid_token):
+    devices = [FakeGPU(0, "GPU-aaaa"), FakeGPU(1, "GPU-aaab"), FakeGPU(2, "GPU-bbbb")]
+    selected, ctx = filter_gpus_by_visibility(
+        devices, cuda_visible_devices=f"0,{invalid_token},2"
+    )
+    assert [device.index for device in selected] == [0]
+    assert ctx.physical_indices == [0]
+    assert ctx.logical_indices == [0]
