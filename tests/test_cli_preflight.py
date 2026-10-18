@@ -7,6 +7,7 @@ from contextlib import contextmanager, nullcontext
 
 import pytest
 
+from omnismi import __version__
 from omnismi.cli import main
 from omnismi.models import GPUInfo, GPUMetrics
 from omnismi.preflight import build_preflight
@@ -88,7 +89,13 @@ def test_cli_preflight_json(monkeypatch, capsys):
 
 
 @pytest.mark.parametrize(
-    "argv", [[], ["unknown"], ["preflight", "--unknown"], ["metrics", "--unknown"]]
+    "argv",
+    [
+        ["preflight", "--unknown"],
+        ["inventory", "--unknown"],
+        ["metrics", "--unknown"],
+        ["preflight", "--min-gpus"],
+    ],
 )
 def test_cli_usage_error(argv, capsys):
     assert main(argv) == 1
@@ -97,10 +104,32 @@ def test_cli_usage_error(argv, capsys):
     assert "usage:" in captured.err
 
 
-@pytest.mark.parametrize("argv", [["--help"], ["preflight", "--help"], ["--version"]])
+@pytest.mark.parametrize(
+    "argv", [["preflight", "--help"], ["metrics", "--help"], ["--version"]]
+)
 def test_cli_help_and_version_succeed(argv, capsys):
     assert main(argv) == 0
     assert capsys.readouterr().out
+
+
+def test_root_help_preserves_overview_and_lists_agent_commands(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--help"])
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    for option in ("--wide", "--watch", "--vendor", "--version"):
+        assert option in output
+    for command in ("preflight", "inventory", "metrics", "topology", "diagnose"):
+        assert command in output
+
+
+@pytest.mark.parametrize(
+    ("argv", "expected"),
+    [(["version"], __version__), (["--version"], f"omnismi {__version__}")],
+)
+def test_version_reports_current_package_version(argv, expected, capsys):
+    assert main(argv) == 0
+    assert capsys.readouterr().out.strip() == expected
 
 
 @pytest.mark.parametrize(

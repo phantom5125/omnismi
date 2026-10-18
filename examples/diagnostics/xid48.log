@@ -1,0 +1,2 @@
+# Synthetic log fixture for the offline quickstart; not a hardware observation.
+[ 12.500] NVRM: Xid (PCI:0000:03:00): 48, synthetic double-bit ECC event

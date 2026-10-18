@@ -1,0 +1,45 @@
+// Omnismi's own bounded SAIL workloads. Built with the installed HGGC SDK.
+// API references are pinned in docs/v2/sources.json; no vendor sample is bundled.
+#include <hggc_runtime.h>
+#include <cstddef>
+
+__global__ void copy_values(const float *a, float *out, size_t count) {
+    size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (i < count) out[i] = a[i];
+}
+
+__global__ void add_values(const float *a, const float *b, float *out, size_t count) {
+    size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (i < count) out[i] = a[i] + b[i];
+}
+
+// A portable FP32 tiled kernel, not a vendor BLAS or tensor-core peak probe.
+__global__ void multiply_values(const float *a, const float *b, float *out, int n) {
+    __shared__ float left[16][16];
+    __shared__ float right[16][16];
+    int x = threadIdx.x, y = threadIdx.y;
+    int row = blockIdx.y * 16 + y, col = blockIdx.x * 16 + x;
+    float sum = 0.0f;
+    for (int offset = 0; offset < n; offset += 16) {
+        left[y][x] = a[row * n + offset + x];
+        right[y][x] = b[(offset + y) * n + col];
+        __syncthreads();
+        for (int k = 0; k < 16; ++k) sum += left[y][k] * right[k][x];
+        __syncthreads();
+    }
+    out[row * n + col] = sum;
+}
+
+static void sail_copy(const float *a, float *out, size_t count) {
+    copy_values<<<(count + 255) / 256, 256>>>(a, out, count);
+}
+static void sail_add(const float *a, const float *b, float *out, size_t count) {
+    add_values<<<(count + 255) / 256, 256>>>(a, b, out, count);
+}
+static void sail_matmul(const float *a, const float *b, float *out, int n) {
+    multiply_values<<<dim3(n / 16, n / 16), dim3(16, 16)>>>(a, b, out, n);
+}
+
+// Keeping host control separate permits CPU protocol/error-path tests. Those
+// tests do not certify HGGC kernel compilation or the real runtime ABI.
+#include "sail_probe_host.hpp"

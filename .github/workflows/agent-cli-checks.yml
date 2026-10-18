@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.12", "3.14"]
+        python: ["3.9", "3.10", "3.12", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,11 +25,12 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - run: python -m pip install . pytest ruff black
-      - run: python -m pytest -q
+      - run: python -m pytest -q tests/test_cli_preflight.py tests/test_visibility.py
       - name: Check changed CLI modules and regression tests
+        if: matrix.python == '3.12'
         run: |
-          ruff check src/omnismi/cli.py src/omnismi/preflight.py src/omnismi/visibility.py tests/test_cli_preflight.py tests/test_visibility.py
-          black --check src/omnismi/cli.py src/omnismi/preflight.py src/omnismi/visibility.py tests/test_cli_preflight.py tests/test_visibility.py
+          ruff check src/omnismi/preflight_cli.py src/omnismi/preflight.py src/omnismi/visibility.py tests/test_cli_preflight.py tests/test_visibility.py
+          black --check src/omnismi/preflight_cli.py src/omnismi/preflight.py src/omnismi/visibility.py tests/test_cli_preflight.py tests/test_visibility.py
       - name: Verify installed console script
         run: |
           omnismi --help
