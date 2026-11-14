@@ -10,10 +10,17 @@
   mappings, and distinct usage/no-device/threshold/backend exit codes.
 - Non-negative admission thresholds, unique GPU UUID prefix selection, duplicate
   protection, and CPU-only CLI regression checks across Python 3.9–3.14.
+- `omnismi --version` and a task-oriented root help map covering all command families.
+- An agent integration guide with safe JSON/exit handling and explicit workload boundaries.
 
 The default overview and released 2.0 commands retain their existing behavior.
 These admission commands are available from this source checkout and have not
 been added to the published 2.0.0 package. Their details are in [the CLI guide](docs/cli.md).
+
+### Changed
+
+- Reframed the project as a CLI-first operational tool for humans and agents while
+  retaining the stable Python API, and rewrote the GitHub homepage around concrete tasks.
 
 ## [2.0.0] - 2026-09-30
 

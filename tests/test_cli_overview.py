@@ -6,6 +6,8 @@ import json
 import os
 import time
 
+import pytest
+
 from omnismi.backends.base import BaseBackend
 from omnismi.cli import _VISIBILITY_CONTROL_ENV_VARS, _detect_environment, main
 from omnismi.models import GPUMetrics, GPUInfo
@@ -159,6 +161,33 @@ def test_detect_environment_reports_runtime_scoped_kubernetes_filters(monkeypatc
         {"name": "CUDA_VISIBLE_DEVICES", "value": "0,2"},
         {"name": "NVIDIA_VISIBLE_DEVICES", "value": "GPU-1234,GPU-5678"},
     ]
+
+
+def test_main_version(capsys) -> None:
+    assert main(["--version"]) == 0
+    assert capsys.readouterr().out.strip() == "omnismi 2.0.0"
+
+
+def test_main_help_is_a_task_oriented_command_map(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert "Inspect, diagnose, and validate accelerators" in captured.out
+    for command in (
+        "doctor",
+        "decode",
+        "diagnose",
+        "perf-doctor",
+        "topology",
+        "bench",
+        "validate-spec",
+    ):
+        assert f"omnismi {command}" in captured.out
+    assert "Agent output:" in captured.out
+    assert "3 INCONCLUSIVE" in captured.out
+    assert "V2 preview" not in captured.out
 
 
 def test_main_default_overview_table_output(backend_factories, monkeypatch, capsys) -> None:

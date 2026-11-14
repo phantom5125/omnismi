@@ -1,35 +1,57 @@
 # Why Omnismi
 
+## The problem
+
+Accelerator work often starts with vendor-specific questions: which devices are
+visible inside this container, why can the framework see fewer devices than the
+host, what does this error code mean, and did the selected device actually run a
+correct workload? Vendor tools remain the source of truth, but their commands,
+object models, units, and failure modes differ.
+
+Omnismi turns those recurring tasks into one operational CLI for humans and AI
+agents, with a small Python API for applications that need in-process metrics.
+It is an inspection and evidence tool, not another monitoring daemon.
+
 ## Target users
 
-- AI agent and coding-agent developers who need portable accelerator preflight checks.
-- Python application developers who want one accelerator metrics API across mixed vendor environments.
-- Platform engineers operating shared images or clusters that may include NVIDIA GPUs, AMD GPUs, and Google TPUs.
+- AI and coding agents that need bounded, structured accelerator inspection.
+- Platform engineers debugging device visibility, telemetry, errors, and locality.
+- Performance engineers comparing measurements with their own recorded baselines.
+- Python application developers who want one accelerator API across vendors.
 
-## Why torch memory APIs are not enough
+## Why vendor tools alone leave a gap
 
-PyTorch memory APIs are valuable for framework-level diagnosis, but they are scoped to the PyTorch
-runtime and workflow. They are not intended to be a general cross-vendor observability contract for
-non-PyTorch processes, mixed-runtime systems, or lightweight agent readiness checks.
+Vendor tools and bindings are the source of truth, and Omnismi depends on them.
+The gap appears when an agent or application must perform the same task across
+multiple vendors: command discovery, field normalization, error interpretation,
+report handling, and runtime-visibility checks otherwise become separate branches.
 
-## Why direct vendor bindings are not enough
+Omnismi adds a consistent task layer while retaining vendor evidence and explicit
+limitations. It does not claim to replace advanced vendor profiling or management.
 
-Direct vendor bindings are the source of truth and Omnismi depends on them. However, each binding has
-different API shapes, lifecycle requirements, and compatibility differences. Using those bindings
-directly in app logic often creates vendor-specific branches and repeated normalization code.
+## Why framework memory APIs are not enough
+
+PyTorch and other framework APIs are valuable for runtime-level diagnosis, but
+they are scoped to that framework and process. They do not provide a general
+cross-vendor management view, offline error catalog, host topology report, or
+lightweight agent workflow for non-framework processes.
 
 ## What Omnismi adds
 
-- A stable cross-vendor API contract: `count`, `gpus`, `gpu`, `info`, `metrics`.
-- Normalized metric units and field names for common telemetry workflows.
-- Graceful degradation semantics: missing values are returned as `None`.
-- A parity command to compare Omnismi GPU output with direct vendor readings.
-- Clear support-vs-validation semantics for production planning.
-
-`🧪 Awaiting User Validation` does NOT mean unsupported.
+- A human-first overview with plain-language `doctor` findings and next steps.
+- Structured agent reports with explicit verdicts, scope, evidence, sources,
+  and limitations.
+- Offline interpretation that never confuses a recorded event with current
+  hardware health.
+- Explicit, bounded workloads instead of hidden benchmarks during discovery.
+- A stable Python contract: `count`, `gpus`, `gpu`, `info`, and `metrics`.
+- Normalized units and unavailable values represented as `None`.
+- Clear separation between implemented adapters and validated hardware models.
 
 ## Non-goals
 
-- Omnismi is not a full profiler or a complete replacement for vendor-native tooling.
-- Omnismi does not hide platform, permission, or driver/runtime constraints.
-- Omnismi does not guarantee that every metric is available on every device.
+- Omnismi is not a full profiler or a complete replacement for vendor tooling.
+- Omnismi does not install drivers, SDKs, or compute frameworks.
+- Omnismi does not hide platform, permission, or runtime constraints.
+- Omnismi does not guarantee every metric on every device or infer health from
+  missing evidence.

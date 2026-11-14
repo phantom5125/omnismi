@@ -2,9 +2,11 @@
 
 [English quickstart](quickstart.md)
 
-先在普通电脑上跑通离线诊断，再到加速卡机器配置厂商环境。核心包不要求
-GPU、SDK 或 PyTorch。以下安装命令适用于 Linux / macOS，要求 Python 3.9+；
-Python 3.12 是已经测试的起点。实时 sysfs 拓扑采集和 SDK 编译需要 Linux。
+Omnismi 是面向人类和 Agent 的 CLI 优先工具，同时保留用于进程内集成的
+Python API。先在普通电脑上跑通离线诊断，再到加速卡机器配置厂商环境。
+核心包不要求 GPU、SDK 或 PyTorch。以下安装命令适用于 Linux / macOS，
+要求 Python 3.9+；Python 3.12 是已经测试的起点。实时 sysfs 拓扑采集和
+SDK 编译需要 Linux。
 
 ## 1. 安装 2.0.0
 
@@ -112,6 +114,8 @@ omnismi bench suite --vendor nvidia --device 0 --memory-mib 64 --timeout 90
 正确性检查通过，不代表整卡健康或达到预期性能。
 
 ## 脚本和 agent 如何处理结果
+
+安全的 subprocess 封装、命令副作用和两类报告结构见 [Agent 指南](agents.md)。
 
 新命令 `decode`、`diagnose`、`perf-doctor`、`topology`、`bench matmul/suite`
 默认输出 JSON，退出码如下：

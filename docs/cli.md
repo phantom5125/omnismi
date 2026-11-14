@@ -3,6 +3,26 @@
 Install Omnismi 2.0.0 using the [quickstart](quickstart.md).
 `python -m omnismi` and the `omnismi` console command invoke the same CLI.
 The small Python API remains available independently of the command-line tools.
+Run `omnismi --help` for the task-oriented command map and `omnismi --version`
+to confirm the installed release. Agents should also read the
+[agent integration guide](agents.md) before automating reports.
+
+## Command map
+
+| Need | Command | Default interface |
+|---|---|---|
+| See what the current process can use | `omnismi` | Human table |
+| Explain missing devices or partial metrics | `omnismi doctor` | Human findings and next steps |
+| Interpret an error or captured evidence | `omnismi decode`, `omnismi diagnose --input` | Structured JSON |
+| Collect current hardware evidence | `omnismi diagnose --collect hardware` | Structured JSON |
+| Compare performance with a recorded baseline | `omnismi perf-doctor` | Structured JSON |
+| Discover topology and affinity | `omnismi topology` | Structured JSON |
+| Run an explicit bounded workload | `omnismi bench matmul`, `omnismi bench suite` | Structured JSON |
+| Compare inventory with a curated profile | `omnismi validate-spec --profile …` | Human table |
+
+The bare command is intentionally the fastest human entry point. Add `-o json`
+for overview automation, or use a structured report command when the task needs
+an explicit verdict, evidence, sources, and limitations.
 
 ## Discovery and visibility
 
@@ -25,7 +45,7 @@ unavailable metrics remain explicit; discovery alone does not establish health.
 These existing commands retain their older exit behavior, so inspect structured
 report verdicts rather than relying only on process success.
 
-## Structured 2.0 commands
+## Structured report commands
 
 | Command | Purpose | Detailed guide |
 |---|---|---|

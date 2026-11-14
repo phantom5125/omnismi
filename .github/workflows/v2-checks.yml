@@ -18,8 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python: ["3.9", "3.10", "3.12", "3.14"]
+        python: ["3.10", "3.12", "3.14"]
         include:
+          - os: ubuntu-24.04
+            python: "3.9"
           - os: macos-latest
             python: "3.12"
     steps:

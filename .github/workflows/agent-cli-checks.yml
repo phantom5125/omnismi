@@ -3,7 +3,7 @@ name: Agent CLI validation
 on:
   pull_request:
   push:
-    branches: ["feat/agent-preflight-cli"]
+    branches: ["main", "feat/agent-preflight-cli"]
   workflow_dispatch:
 
 permissions:
@@ -11,12 +11,16 @@ permissions:
 
 jobs:
   cpu-contracts:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.10", "3.12", "3.14"]
+        os: [ubuntu-latest]
+        python: ["3.10", "3.12", "3.14"]
+        include:
+          - os: ubuntu-24.04
+            python: "3.9"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
