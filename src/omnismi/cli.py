@@ -101,11 +101,14 @@ def build_overview_parser() -> argparse.ArgumentParser:
         prog="omnismi",
         description="Show a cross-vendor accelerator summary for the current runtime.",
         epilog=(
+            "Agent snapshots: omnismi preflight --help; omnismi inventory --help; "
+            "omnismi metrics --help; omnismi version. "
             "V2 preview commands: omnismi decode --help; omnismi diagnose --help; "
             "omnismi perf-doctor --help; omnismi topology --help; "
             "omnismi cndev-build --help; omnismi sail-build --help."
         ),
     )
+    parser.add_argument("--version", action="version", version=f"omnismi {__version__}")
     _build_common_scope_group(parser)
     parser.add_argument(
         "--wide",
@@ -1914,6 +1917,17 @@ def _run_bench(args: argparse.Namespace, argv: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
+
+    if raw_args and raw_args[0] in {
+        "preflight",
+        "inventory",
+        "metrics",
+        "version",
+        "--version",
+    }:
+        from omnismi.preflight_cli import run
+
+        return run(raw_args)
 
     if len(raw_args) >= 2 and raw_args[0] == "bench" and raw_args[1] in {"matmul", "suite"}:
         from omnismi.bench_v2 import run

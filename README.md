@@ -96,6 +96,16 @@ The suite allocates accelerator memory and runs workloads; use it only when you
 intend to test the selected runtime device. It requires a compatible compute
 runtime. A passing self-test covers the executed checks, not whole-device health.
 
+## Agent admission checks (source checkout)
+
+The next release adds `omnismi preflight --min-gpus 1 --min-free-gib 8`,
+`omnismi inventory`, and `omnismi metrics` as JSON snapshots, plus
+`omnismi version`. Install this source checkout to use them; the published
+2.0.0 package does not include them. The default overview and existing diagnostics,
+topology, and benchmark commands remain available.
+See the [CLI guide](docs/cli.md#agent-admission-commands-source-checkout) for the
+admission commands' exit codes and visibility rules.
+
 ## Validation status
 
 | Adapter | Evidence |

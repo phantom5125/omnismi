@@ -24,6 +24,10 @@ environment = dict(os.environ)
 environment.pop("PYTHONPATH", None)
 with tempfile.TemporaryDirectory() as temporary:
     for command in (
+        "",
+        "doctor",
+        "validate-spec",
+        "bench bandwidth",
         "decode",
         "diagnose",
         "perf-doctor",
@@ -32,6 +36,10 @@ with tempfile.TemporaryDirectory() as temporary:
         "sail-build",
         "bench matmul",
         "bench suite",
+        "preflight",
+        "inventory",
+        "metrics",
+        "version",
     ):
         result = subprocess.run(
             [sys.executable, "-m", "omnismi", *command.split(), "--help"],
@@ -42,6 +50,47 @@ with tempfile.TemporaryDirectory() as temporary:
             timeout=10,
         )
         assert result.returncode == 0, (command, result.stderr)
+    for command in ("version", "--version"):
+        result = subprocess.run(
+            [sys.executable, "-m", "omnismi", command],
+            cwd=temporary,
+            env=environment,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+        expected = (
+            omnismi.__version__
+            if command == "version"
+            else f"omnismi {omnismi.__version__}"
+        )
+        assert result.returncode == 0 and result.stdout.strip() == expected
+    for command in ("preflight", "inventory", "metrics"):
+        result = subprocess.run(
+            [sys.executable, "-m", "omnismi", command],
+            cwd=temporary,
+            env={**environment, "CUDA_VISIBLE_DEVICES": ""},
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+        assert result.returncode == 2, (command, result.stderr)
+        snapshot = json.loads(result.stdout)
+        assert snapshot["command"] == command
+        assert snapshot["exit_code"] == 2
+        assert snapshot["ts_ns"] > 0
+        assert snapshot["summary"]["gpu_count"] == 0
+    for argument in ("--min-gpus=-1", "--min-free-gib=nan", "--min-free-gib=1e308"):
+        result = subprocess.run(
+            [sys.executable, "-m", "omnismi", "preflight", argument],
+            cwd=temporary,
+            env=environment,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+        assert result.returncode == 1, (argument, result.stderr)
+        assert result.stdout == "" and "error:" in result.stderr
     result = subprocess.run(
         [sys.executable, "-m", "omnismi", "diagnose", "--input", "-"],
         input="[ 1.0] NVRM: Xid (PCI:0000:03:00): 48, observed error\n",
@@ -55,4 +104,4 @@ with tempfile.TemporaryDirectory() as temporary:
     assert (
         json.loads(result.stdout)["scope"]["current_hardware_health"] == "INCONCLUSIVE"
     )
-print("Installed wheel: catalog, native sources and eight CLI entry points passed")
+print("Installed wheel: 16 CLI helps, admission contracts, catalog and sources passed")

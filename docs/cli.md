@@ -60,6 +60,72 @@ PPU/MLU SDK compilation and actual card behavior still need target-host validati
 See [compatibility](compatibility.md) for evidence rather than treating software CI
 as hardware certification.
 
+## Agent admission commands (source checkout)
+
+These commands are additive to the 2.0 CLI and are available from this source
+checkout for the next release. They are absent from the published 2.0.0 package.
+Running `omnismi` without arguments still shows the human-readable overview.
+
+```bash
+omnismi preflight --min-gpus 1 --min-free-gib 8
+omnismi inventory
+omnismi metrics --human
+omnismi version
+omnismi --version
+```
+
+`preflight` takes a one-shot inventory and realtime metrics snapshot, then applies
+the requested GPU-count and per-device free-memory thresholds. `inventory` and
+`metrics` return snapshots without threshold gates. They do not start workloads.
+Both the console script and `python -m omnismi` support these commands.
+
+### Admission exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Admission requirements met, or a nonempty snapshot |
+| 1 | Usage error, including invalid threshold arguments |
+| 2 | No visible accelerators |
+| 3 | GPU-count or free-memory threshold failure |
+| 10 | Backend error |
+
+These codes apply to `preflight`, `inventory`, and `metrics`. The structured 2.0
+diagnostic commands above retain their verdict exit codes. `version`, `--version`,
+and help exit 0. Admission usage errors write stderr without JSON on stdout.
+Counts and memory thresholds must be non-negative; GiB values must be finite and
+convertible to bytes. If both free-memory flags are supplied, the stricter applies.
+
+### Admission JSON snapshots
+
+The three snapshot commands share `schema_version`, `command`, `ok`, `exit_code`,
+`ts_ns` (Unix time in nanoseconds), `summary`, `devices`, `warnings`, and `failures`,
+including empty inventories and backend errors. This admission snapshot schema is
+separate from the structured 2.0 diagnostic reports described above.
+
+`summary` contains `gpu_count`, `vendors`, `all_free_bytes_min`, and `busy_gpu_count`.
+Unknown free memory and the unavailable busy count are `null`. `--human` adds a
+one-line summary to stderr while preserving JSON on stdout.
+
+### Admission visibility and limits
+
+Admission snapshots honor `CUDA_VISIBLE_DEVICES` by default; `--all-devices`
+ignores that filter for these commands. Integer management indexes, full UUIDs,
+and unique `GPU-` UUID prefixes are accepted with case-insensitive UUID matching.
+Bare suffixes and ambiguous prefixes cannot select a device. The first invalid
+or repeated identifier stops the list. For example, `0,2,-1,1` selects devices
+0 and 2, remapped to logical indexes 0 and 1. An empty value selects none.
+See NVIDIA's [CUDA environment variable reference](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/environment-variables.html).
+
+These are admission-snapshot mappings, not a change to the existing overview or
+compute-runtime device selection. Container/runtime ordinals can differ from
+management indexes; retain UUID identity when comparing reports.
+
+`processes` and `topology` are reserved fields in admission snapshots.
+`--require-idle` warns that it is not enforced; it must not be used as proof that a
+device is idle. `--topology` warns that it is omitted; use the existing `topology`
+command for a topology report. Admission snapshots use one-shot `GPU.realtime()`
+reads and do not leave a sampler running.
+
 ## Workload execution
 
 Management and offline commands do not automatically run benchmarks or modify
