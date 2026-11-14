@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager, nullcontext
+from dataclasses import replace
 
 import pytest
 
@@ -21,16 +22,17 @@ class FakeBackend:
 
 
 class FakeGPU:
-    def __init__(self, index, free_bytes=8 * 1024**3):
+    def __init__(self, index, free_bytes=8 * 1024**3, vendor="nvidia"):
         self.index = index
         self._backend = FakeBackend()
         self._free = free_bytes
         self._total = 16 * 1024**3
+        self._vendor = vendor
 
     def info(self):
         return GPUInfo(
             index=self.index,
-            vendor="nvidia",
+            vendor=self._vendor,
             name=f"Fake-{self.index}",
             uuid=f"GPU-fake-{self.index}",
             driver="fake",
@@ -78,6 +80,36 @@ def test_build_preflight_min_free_fail():
     assert any(f["code"] == "insufficient_free_memory" for f in payload["failures"])
 
 
+def test_build_preflight_unknown_free_memory_does_not_pass():
+    class UnknownMemoryGPU(FakeGPU):
+        def metrics(self):
+            return replace(super().metrics(), memory_used_bytes=None)
+
+    payload = build_preflight(devices=[UnknownMemoryGPU(0)], min_free_bytes=1024**3)
+
+    assert payload["ok"] is False
+    assert payload["exit_code"] == 3
+    assert payload["failures"] == [
+        {
+            "code": "free_memory_unknown",
+            "device_logical_index": 0,
+            "need_free_bytes": 1024**3,
+        }
+    ]
+
+
+def test_build_preflight_vendor_scopes_count_and_visibility():
+    devices = [FakeGPU(0), FakeGPU(1, vendor="amd")]
+
+    payload = build_preflight(devices=devices, vendor="amd", min_gpus=1)
+
+    assert payload["exit_code"] == 0
+    assert payload["requirements"]["vendor"] == "amd"
+    assert payload["summary"]["vendors"] == ["amd"]
+    assert payload["visibility"]["physical_indices"] == [1]
+    assert payload["visibility"]["enforcement"] == "runtime_hint_only"
+
+
 def test_cli_preflight_json(monkeypatch, capsys):
     monkeypatch.setattr("omnismi.preflight.list_gpus", lambda: [FakeGPU(0)])
     code = main(["preflight"])
@@ -86,6 +118,18 @@ def test_cli_preflight_json(monkeypatch, capsys):
     assert code == 0
     assert data["command"] == "preflight"
     assert data["summary"]["gpu_count"] == 1
+
+
+def test_cli_preflight_vendor_option(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "omnismi.preflight.list_gpus",
+        lambda: [FakeGPU(0), FakeGPU(1, vendor="amd")],
+    )
+
+    assert main(["preflight", "--vendor", "amd", "--min-gpus", "1"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["requirements"]["vendor"] == "amd"
+    assert [row["physical_index"] for row in data["devices"]] == [1]
 
 
 @pytest.mark.parametrize(

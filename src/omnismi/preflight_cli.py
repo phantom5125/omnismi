@@ -57,19 +57,20 @@ def _cmd_preflight(args: argparse.Namespace) -> int:
         require_idle=args.require_idle,
         visible_only=args.visible_only,
         include_topology=args.topology,
+        vendor=args.vendor,
     )
     _emit_json(payload, human=args.human)
     return int(payload.get("exit_code", 1))
 
 
 def _cmd_inventory(args: argparse.Namespace) -> int:
-    payload = build_inventory(visible_only=args.visible_only)
+    payload = build_inventory(visible_only=args.visible_only, vendor=args.vendor)
     _emit_json(payload, human=args.human)
     return int(payload.get("exit_code", 1))
 
 
 def _cmd_metrics(args: argparse.Namespace) -> int:
-    payload = build_metrics(visible_only=args.visible_only)
+    payload = build_metrics(visible_only=args.visible_only, vendor=args.vendor)
     _emit_json(payload, human=args.human)
     return int(payload.get("exit_code", 1))
 
@@ -103,19 +104,24 @@ def build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="also print a one-line human summary to stderr",
         )
+        p.add_argument(
+            "--vendor",
+            choices=["nvidia", "amd", "google", "alibaba", "cambricon"],
+            help="only count and snapshot devices from this vendor",
+        )
         vis = p.add_mutually_exclusive_group()
         vis.add_argument(
             "--visible-only",
             dest="visible_only",
             action="store_true",
             default=True,
-            help="honor CUDA_VISIBLE_DEVICES (default)",
+            help="honor vendor-specific visibility environment variables (default)",
         )
         vis.add_argument(
             "--all-devices",
             dest="visible_only",
             action="store_false",
-            help="ignore CUDA_VISIBLE_DEVICES and list all discovered devices",
+            help="ignore supported visibility environment variables",
         )
 
     pre = sub.add_parser(

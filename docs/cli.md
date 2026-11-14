@@ -87,7 +87,8 @@ checkout for the next release. They are absent from the published 2.0.0 package.
 Running `omnismi` without arguments still shows the human-readable overview.
 
 ```bash
-omnismi preflight --min-gpus 1 --min-free-gib 8
+omnismi preflight --vendor nvidia --min-gpus 1 --min-free-gib 8
+omnismi preflight --vendor amd --min-gpus 1
 omnismi inventory
 omnismi metrics --human
 omnismi version
@@ -95,9 +96,13 @@ omnismi --version
 ```
 
 `preflight` takes a one-shot inventory and realtime metrics snapshot, then applies
-the requested GPU-count and per-device free-memory thresholds. `inventory` and
-`metrics` return snapshots without threshold gates. They do not start workloads.
-Both the console script and `python -m omnismi` support these commands.
+the requested vendor, GPU-count, and per-device free-memory requirements.
+`--vendor` prevents a mixed host from satisfying a vendor-specific count with
+other accelerators. A requested free-memory threshold fails with
+`free_memory_unknown` when the evidence is unavailable; it never silently passes.
+`inventory` and `metrics` return snapshots without threshold gates. They do not
+start workloads. Both the console script and `python -m omnismi` support these
+commands.
 
 ### Admission exit codes
 
@@ -106,7 +111,7 @@ Both the console script and `python -m omnismi` support these commands.
 | 0 | Admission requirements met, or a nonempty snapshot |
 | 1 | Usage error, including invalid threshold arguments |
 | 2 | No visible accelerators |
-| 3 | GPU-count or free-memory threshold failure |
+| 3 | GPU-count/free-memory threshold failure, or a requested threshold cannot be evaluated |
 | 10 | Backend error |
 
 These codes apply to `preflight`, `inventory`, and `metrics`. The structured 2.0
@@ -128,17 +133,26 @@ one-line summary to stderr while preserving JSON on stdout.
 
 ### Admission visibility and limits
 
-Admission snapshots honor `CUDA_VISIBLE_DEVICES` by default; `--all-devices`
-ignores that filter for these commands. Integer management indexes, full UUIDs,
-and unique `GPU-` UUID prefixes are accepted with case-insensitive UUID matching.
-Bare suffixes and ambiguous prefixes cannot select a device. The first invalid
-or repeated identifier stops the list. For example, `0,2,-1,1` selects devices
-0 and 2, remapped to logical indexes 0 and 1. An empty value selects none.
-See NVIDIA's [CUDA environment variable reference](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/environment-variables.html).
+Admission snapshots apply visibility controls only to the applicable vendor:
+NVIDIA uses `CUDA_VISIBLE_DEVICES`; AMD uses `ROCR_VISIBLE_DEVICES`,
+`HIP_VISIBLE_DEVICES`, and `GPU_DEVICE_ORDINAL`. Other vendors remain unfiltered
+by these variables. `--all-devices` ignores all supported filters.
 
-These are admission-snapshot mappings, not a change to the existing overview or
-compute-runtime device selection. Container/runtime ordinals can differ from
-management indexes; retain UUID identity when comparing reports.
+NVIDIA accepts integer management indexes, full UUIDs, and unique `GPU-` UUID
+prefixes with case-insensitive matching. AMD's ROCR control accepts indexes and
+UUIDs; HIP and `GPU_DEVICE_ORDINAL` accept indexes. Multiple active AMD controls
+are intersected conservatively and produce a visibility warning. Bare suffixes,
+ambiguous prefixes, invalid identifiers, and duplicates cannot inflate the count.
+The first invalid or repeated identifier stops that control's list. An empty value
+selects no devices for that vendor. For example, CUDA `0,2,-1,1` selects NVIDIA
+devices 0 and 2, remapped to logical indexes 0 and 1.
+
+See NVIDIA's [CUDA environment variable reference](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/environment-variables.html)
+and AMD's [HIP isolation variables](https://rocm.docs.amd.com/projects/HIP/en/latest/reference/env_variables.html#gpu-isolation-variables).
+The snapshot includes `visibility.enforcement = runtime_hint_only`: these
+variables are not proof of cgroup/device isolation, and management indexes can
+differ from container or compute-runtime indexes. Retain UUID identity when
+comparing reports.
 
 `processes` and `topology` are reserved fields in admission snapshots.
 `--require-idle` warns that it is not enforced; it must not be used as proof that a

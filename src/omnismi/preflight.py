@@ -83,6 +83,31 @@ def device_snapshot(
     }
 
 
+def _visibility_snapshot(visibility: Any) -> dict[str, Any]:
+    return {
+        "mode": visibility.mode,
+        "env": visibility.env,
+        "physical_indices": visibility.physical_indices,
+        "logical_indices": visibility.logical_indices,
+        "enforcement": visibility.enforcement,
+        "warnings": visibility.warnings,
+    }
+
+
+def _select_devices(
+    *,
+    visible_only: bool,
+    vendor: str | None,
+    devices: list[Any] | None = None,
+) -> tuple[list[Any], Any]:
+    all_devices = list(devices) if devices is not None else list_gpus()
+    if vendor is not None:
+        all_devices = [
+            device for device in all_devices if device.info().vendor == vendor
+        ]
+    return filter_gpus_by_visibility(all_devices, visible_only=visible_only)
+
+
 def build_preflight(
     *,
     min_gpus: int = 0,
@@ -90,6 +115,7 @@ def build_preflight(
     require_idle: bool = False,
     visible_only: bool = True,
     include_topology: bool = False,
+    vendor: str | None = None,
     devices: list[Any] | None = None,
 ) -> dict[str, Any]:
     """Return a preflight snapshot dict including exit_code semantics."""
@@ -97,13 +123,13 @@ def build_preflight(
     failures: list[dict[str, Any]] = []
 
     try:
-        all_devices = list(devices) if devices is not None else list_gpus()
-        selected, visibility = filter_gpus_by_visibility(
-            all_devices, visible_only=visible_only
+        selected, visibility = _select_devices(
+            visible_only=visible_only, vendor=vendor, devices=devices
         )
     except Exception as exc:
         return _backend_error("preflight", exc)
 
+    warnings.extend(visibility.warnings)
     device_rows: list[dict[str, Any]] = []
     for logical_index, device in enumerate(selected):
         try:
@@ -133,9 +159,12 @@ def build_preflight(
         for row in device_rows:
             free = row.get("memory_free_bytes")
             if free is None:
-                warnings.append(
-                    f"logical_index {row['logical_index']}: memory_free_bytes unknown; "
-                    "min-free check skipped for this device"
+                failures.append(
+                    {
+                        "code": "free_memory_unknown",
+                        "device_logical_index": row["logical_index"],
+                        "need_free_bytes": min_free_bytes,
+                    }
                 )
                 continue
             if free < min_free_bytes:
@@ -156,10 +185,7 @@ def build_preflight(
 
     if not device_rows:
         exit_code = 2
-    elif any(
-        f.get("code") in {"insufficient_gpu_count", "insufficient_free_memory"}
-        for f in failures
-    ):
+    elif failures:
         exit_code = 3
     else:
         exit_code = 0
@@ -170,13 +196,9 @@ def build_preflight(
         "ok": exit_code == 0,
         "exit_code": exit_code,
         "ts_ns": time.time_ns(),
-        "visibility": {
-            "mode": visibility.mode,
-            "env": visibility.env,
-            "physical_indices": visibility.physical_indices,
-            "logical_indices": visibility.logical_indices,
-        },
+        "visibility": _visibility_snapshot(visibility),
         "requirements": {
+            "vendor": vendor,
             "min_gpus": min_gpus,
             "min_free_bytes_per_gpu": min_free_bytes,
             "require_idle": require_idle,
@@ -192,13 +214,17 @@ def build_preflight(
             "preflight uses one-shot realtime metric reads",
             "processes and topology are not implemented in this release",
             "framework tensor allocator state is out of scope",
+            "visibility environment variables are runtime hints, not cgroup "
+            "enforcement",
         ],
     }
 
 
-def build_inventory(*, visible_only: bool = True) -> dict[str, Any]:
+def build_inventory(
+    *, visible_only: bool = True, vendor: str | None = None
+) -> dict[str, Any]:
     """Inventory-only snapshot (no threshold gates beyond empty)."""
-    result = build_preflight(visible_only=visible_only)
+    result = build_preflight(visible_only=visible_only, vendor=vendor)
     result["command"] = "inventory"
     if result.get("devices"):
         result["ok"] = True
@@ -207,12 +233,12 @@ def build_inventory(*, visible_only: bool = True) -> dict[str, Any]:
     return result
 
 
-def build_metrics(*, visible_only: bool = True) -> dict[str, Any]:
+def build_metrics(
+    *, visible_only: bool = True, vendor: str | None = None
+) -> dict[str, Any]:
     """Return one realtime metrics snapshot with the shared JSON envelope."""
     try:
-        selected, visibility = filter_gpus_by_visibility(
-            list_gpus(), visible_only=visible_only
-        )
+        selected, visibility = _select_devices(visible_only=visible_only, vendor=vendor)
         rows = [
             device_snapshot(device, logical_index=logical_index, realtime=True)
             for logical_index, device in enumerate(selected)
@@ -227,15 +253,10 @@ def build_metrics(*, visible_only: bool = True) -> dict[str, Any]:
         "ok": exit_code == 0,
         "exit_code": exit_code,
         "ts_ns": time.time_ns(),
-        "visibility": {
-            "mode": visibility.mode,
-            "env": visibility.env,
-            "physical_indices": visibility.physical_indices,
-            "logical_indices": visibility.logical_indices,
-        },
+        "visibility": _visibility_snapshot(visibility),
         "summary": _snapshot_summary(rows),
         "devices": rows,
-        "warnings": [],
+        "warnings": visibility.warnings,
         "failures": (
             []
             if rows

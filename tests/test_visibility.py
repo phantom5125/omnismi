@@ -8,17 +8,30 @@ from omnismi.visibility import filter_gpus_by_visibility, parse_cuda_visible_dev
 
 
 class FakeInfo:
-    def __init__(self, uuid=None):
+    def __init__(self, uuid=None, vendor="nvidia"):
         self.uuid = uuid
+        self.vendor = vendor
 
 
 class FakeGPU:
-    def __init__(self, index, uuid=None):
+    def __init__(self, index, uuid=None, vendor="nvidia"):
         self.index = index
         self._uuid = uuid
+        self._vendor = vendor
 
     def info(self):
-        return FakeInfo(self._uuid)
+        return FakeInfo(self._uuid, self._vendor)
+
+
+@pytest.fixture(autouse=True)
+def clear_visibility_environment(monkeypatch):
+    for name in (
+        "CUDA_VISIBLE_DEVICES",
+        "ROCR_VISIBLE_DEVICES",
+        "HIP_VISIBLE_DEVICES",
+        "GPU_DEVICE_ORDINAL",
+    ):
+        monkeypatch.delenv(name, raising=False)
 
 
 def test_parse_unset():
@@ -103,3 +116,60 @@ def test_invalid_or_duplicate_identifier_stops_visibility(invalid_token):
     assert [device.index for device in selected] == [0]
     assert ctx.physical_indices == [0]
     assert ctx.logical_indices == [0]
+
+
+def test_cuda_visibility_does_not_filter_amd_devices():
+    devices = [
+        FakeGPU(0, vendor="nvidia"),
+        FakeGPU(1, vendor="nvidia"),
+        FakeGPU(2, vendor="amd"),
+    ]
+
+    selected, ctx = filter_gpus_by_visibility(devices, cuda_visible_devices="1")
+
+    assert [device.index for device in selected] == [1, 2]
+    assert ctx.physical_indices == [1, 2]
+    assert ctx.logical_indices == [0, 1]
+    assert ctx.enforcement == "runtime_hint_only"
+
+
+def test_empty_rocr_visibility_hides_only_amd_devices(monkeypatch):
+    devices = [FakeGPU(0), FakeGPU(1, vendor="amd")]
+    monkeypatch.setenv("ROCR_VISIBLE_DEVICES", "")
+
+    selected, ctx = filter_gpus_by_visibility(devices)
+
+    assert [device.index for device in selected] == [0]
+    assert ctx.env == {"ROCR_VISIBLE_DEVICES": ""}
+
+
+def test_rocr_visibility_supports_unique_uuid_prefix(monkeypatch):
+    devices = [
+        FakeGPU(0, "GPU-aaaa", "amd"),
+        FakeGPU(1, "GPU-bbbb", "amd"),
+    ]
+    monkeypatch.setenv("ROCR_VISIBLE_DEVICES", "GPU-b")
+
+    selected, ctx = filter_gpus_by_visibility(devices)
+
+    assert [device.index for device in selected] == [1]
+    assert ctx.logical_indices == [0]
+
+
+def test_multiple_amd_controls_are_intersected_and_reported(monkeypatch):
+    devices = [
+        FakeGPU(0, vendor="amd"),
+        FakeGPU(1, vendor="amd"),
+        FakeGPU(2, vendor="amd"),
+    ]
+    monkeypatch.setenv("ROCR_VISIBLE_DEVICES", "0,1")
+    monkeypatch.setenv("HIP_VISIBLE_DEVICES", "1,2")
+
+    selected, ctx = filter_gpus_by_visibility(devices)
+
+    assert [device.index for device in selected] == [1]
+    assert ctx.env == {
+        "ROCR_VISIBLE_DEVICES": "0,1",
+        "HIP_VISIBLE_DEVICES": "1,2",
+    }
+    assert "intersected" in ctx.warnings[0]

@@ -51,6 +51,26 @@
       ]
     },
     {
+      "id": "vendor-aware-admission",
+      "area": "cli",
+      "status": "verified",
+      "title": "Admission snapshots respect vendor scope and unknown evidence",
+      "description": "Preflight, inventory, and metrics support vendor-scoped snapshots, apply NVIDIA and AMD visibility variables only to the relevant devices, conservatively intersect AMD controls, expose runtime-hint limits, and reject requested free-memory gates when evidence is unknown.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_preflight.py tests/test_visibility.py",
+        "PYTHONPATH=src pytest -q"
+      ],
+      "source_of_truth": [
+        "src/omnismi/preflight_cli.py",
+        "src/omnismi/preflight.py",
+        "src/omnismi/visibility.py",
+        "tests/test_cli_preflight.py",
+        "tests/test_visibility.py",
+        "docs/cli.md",
+        "docs/agents.md"
+      ]
+    },
+    {
       "id": "harness-app-spec",
       "area": "harness",
       "status": "verified",
