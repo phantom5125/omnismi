@@ -933,6 +933,21 @@
       ]
     },
     {
+      "id": "validate-nvidia-a10",
+      "area": "hardware_validation",
+      "status": "verified",
+      "title": "Validate NVIDIA A10 on ModelScope",
+      "description": "ModelScope PAI-DSW A10 evidence covers 266 tests, direct NVML parity, Python API and overview/doctor telemetry, vendor-scoped preflight, and an explicit 64 MiB bounded suite on main@5602f18.",
+      "verification": [
+        "Review docs/v2/STATUS.md#modelscope-nvidia-a10 for environment, commands, results, and evidence boundaries."
+      ],
+      "source_of_truth": [
+        "docs/compatibility.md",
+        "docs/v2/STATUS.md",
+        "README.md"
+      ]
+    },
+    {
       "id": "validate-nvidia-h100",
       "area": "hardware_validation",
       "status": "awaiting_validation",

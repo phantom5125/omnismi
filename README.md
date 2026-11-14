@@ -117,8 +117,8 @@ metrics stay `None`. Core has no mandatory vendor dependency. See the
 ## Know what a result proves
 
 - A green CI badge validates software and synthetic protocols, not every card.
-- NVIDIA H20 and AMD MI300X have earlier telemetry evidence; new 2.0 paths still
-  need target-host evidence.
+- NVIDIA A10 has current-main telemetry, parity, preflight, and bounded-suite
+  evidence from ModelScope. NVIDIA H20 and AMD MI300X have earlier telemetry evidence.
 - Google TPU is experimental. Alibaba PPU and Cambricon MLU have fixture and
   synthetic native-runtime tests; real SDK/card validation is pending.
 - A self-test PASS covers only the executed checks, not whole-device health.

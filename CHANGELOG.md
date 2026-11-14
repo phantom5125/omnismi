@@ -13,6 +13,8 @@
 - CPU-only CLI regression checks across Python 3.9–3.14.
 - `omnismi --version` and a task-oriented root help map covering all command families.
 - An agent integration guide with safe JSON/exit handling and explicit workload boundaries.
+- ModelScope NVIDIA A10 evidence for current-main telemetry, direct parity,
+  vendor-scoped preflight, and the explicit bounded bench suite.
 
 The default overview and released 2.0 commands retain their existing behavior.
 These admission commands are available from this source checkout and have not

@@ -91,6 +91,7 @@ visible accelerators.
 | Vendor | Model | Driver/Runtime Version | Ground Truth Library Version | Omnismi Version | Status | Evidence | Failure Cause |
 |---|---|---|---|---|
 | NVIDIA | H20 | CUDA/NVML-compatible stack (validated) | `nvidia-ml-py` (validated) | `1.0.0rc` | ✅ Verified | [v1.0.0 release note](https://github.com/phantom5125/omnismi/blob/main/CHANGELOG.md#100---2026-02-25) | - |
+| NVIDIA | A10 | Driver 570.211.01 / CUDA 13.0 | `nvidia-ml-py` 13.615.71 | `main@5602f18` | ✅ Verified | [ModelScope telemetry, parity and bounded suite](v2/STATUS.md#modelscope-nvidia-a10) | - |
 | NVIDIA | H100 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | H200 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
 | NVIDIA | B200 | TBD (awaiting user report) | `nvidia-ml-py` adapter path implemented | `1.0.0rc` | 🧪 Awaiting User Validation | - | - |
