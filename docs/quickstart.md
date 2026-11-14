@@ -2,9 +2,11 @@
 
 [中文上手指南](quickstart.zh-CN.md)
 
-Start with an offline result on any Linux or macOS laptop. Add a vendor runtime
-only when you move to a hardware host. Python 3.9+ is required; Python 3.12 is a
-tested starting point. Linux is required for live sysfs topology and SDK builds.
+Omnismi is a CLI-first tool for humans and agents, with a Python API for
+in-process integration. Start with an offline result on any Linux or macOS
+laptop. Add a vendor runtime only when you move to a hardware host. Python 3.9+
+is required; Python 3.12 is a tested starting point. Linux is required for live
+sysfs topology and SDK builds.
 
 ## Install 2.0.0
 
@@ -122,6 +124,9 @@ stops if a step cannot pass. Its PASS covers numerical correctness of the select
 operations; use `perf-doctor` and a matching baseline to judge performance.
 
 ## Handle reports in scripts and agents
+
+See the [agent guide](agents.md) for a safe subprocess wrapper, command side
+effects, and the two report-schema families.
 
 New commands (`decode`, `diagnose`, `perf-doctor`, `topology`, `bench matmul/suite`)
 return JSON and use these exit codes:

@@ -99,16 +99,45 @@ def _add_color_arguments(parser: argparse.ArgumentParser) -> None:
 def build_overview_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="omnismi",
-        description="Show a cross-vendor accelerator summary for the current runtime.",
-        epilog=(
-            "Agent snapshots: omnismi preflight --help; omnismi inventory --help; "
-            "omnismi metrics --help; omnismi version. "
-            "V2 preview commands: omnismi decode --help; omnismi diagnose --help; "
-            "omnismi perf-doctor --help; omnismi topology --help; "
-            "omnismi cndev-build --help; omnismi sail-build --help."
-        ),
+        description="Inspect, diagnose, and validate accelerators from one CLI.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""Commands:
+  omnismi                 Show visible devices and live telemetry.
+  omnismi doctor          Explain missing devices, dependencies, and visibility.
+  omnismi preflight       Check device count and free memory before a job.
+  omnismi inventory       Emit a one-shot JSON inventory snapshot.
+  omnismi metrics         Emit one-shot JSON realtime metrics.
+  omnismi decode          Explain a vendor error code offline.
+  omnismi diagnose        Interpret logs or collect hardware evidence.
+  omnismi perf-doctor     Measure and compare performance with a baseline.
+  omnismi topology        Inspect PCI, NUMA, NIC, and accelerator locality.
+  omnismi bench           Run an explicit, bounded accelerator workload.
+  omnismi validate-spec   Compare visible devices with an expected profile.
+
+Examples:
+  omnismi --wide
+  omnismi --vendor nvidia -o json
+  omnismi doctor
+  omnismi preflight --min-gpus 1 --min-free-gib 8
+  omnismi decode --vendor nvidia --namespace xid --code 48
+  omnismi diagnose --input events.log
+  omnismi bench suite --vendor nvidia --device 0 --memory-mib 64
+
+Agent output:
+  Use -o json with overview, doctor, validate-spec, and bench bandwidth.
+  Admission and other structured report commands emit JSON by default.
+  Structured verdict exits are 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE,
+  and 64 invalid invocation/input. Admission uses 0 admitted, 1 usage error,
+  2 no devices, 3 unmet requirements, and 10 backend error. Existing overview,
+  doctor, validate-spec, and legacy bench bandwidth exits remain compatible.
+
+Run `omnismi <command> --help` for command-specific options.""",
     )
-    parser.add_argument("--version", action="version", version=f"omnismi {__version__}")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     _build_common_scope_group(parser)
     parser.add_argument(
         "--wide",
@@ -134,7 +163,7 @@ def build_overview_parser() -> argparse.ArgumentParser:
 def build_root_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="omnismi",
-        description="Omnismi command-line tools.",
+        description="Inspect, diagnose, and validate accelerators from one CLI.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

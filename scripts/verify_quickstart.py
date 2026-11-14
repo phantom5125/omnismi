@@ -73,7 +73,7 @@ def main() -> None:
             commands += 1
     # Exercise the wheel's console entry point as well as python -m omnismi.
     console = Path(sys.executable).with_name("omnismi")
-    subprocess.run(
+    help_result = subprocess.run(
         [str(console), "--help"],
         cwd=ROOT,
         env=environment,
@@ -82,6 +82,19 @@ def main() -> None:
         timeout=10,
         check=True,
     )
+    assert "Agent output:" in help_result.stdout
+    assert "omnismi perf-doctor" in help_result.stdout
+    assert "V2 preview" not in help_result.stdout
+    version_result = subprocess.run(
+        [str(console), "--version"],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=True,
+    )
+    assert version_result.stdout.strip() == f"omnismi {omnismi.__version__}"
     print(
         f"Quickstart: {commands} documented offline commands and console entry passed"
     )

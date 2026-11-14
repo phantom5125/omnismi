@@ -1,6 +1,6 @@
 {
   "project": "omnismi",
-  "updated_at": "2026-10-19",
+  "updated_at": "2026-11-13",
   "harness_version": 1,
   "bootstrap_command": "./init.sh",
   "read_first": [
@@ -824,7 +824,7 @@
       "area": "documentation",
       "status": "implemented",
       "title": "README exposes Quick Start near the top",
-      "description": "The README puts executable usage near the top so users and agents can see the core API before digging into matrices and background sections.",
+      "description": "The README puts concrete tasks and executable CLI usage near the top so users and agents can choose a workflow before digging into the Python API, matrices, and background sections.",
       "verification": [
         "Review the section order in README.md."
       ],
@@ -888,6 +888,28 @@
         "mkdocs.yml",
         "pyproject.toml",
         "docs/"
+      ]
+    },
+    {
+      "id": "agent-human-onboarding",
+      "area": "documentation",
+      "status": "verified",
+      "title": "CLI-first onboarding serves both agents and humans",
+      "description": "The GitHub homepage leads with concrete accelerator tasks, root help exposes the full command map and version, and the agent guide documents safe report handling and explicit workload boundaries.",
+      "verification": [
+        "PYTHONPATH=src pytest -q tests/test_cli_overview.py",
+        "python -m omnismi --help",
+        "python -m omnismi --version",
+        "python scripts/verify_quickstart.py",
+        "python -m mkdocs build --strict"
+      ],
+      "source_of_truth": [
+        "README.md",
+        "src/omnismi/cli.py",
+        "tests/test_cli_overview.py",
+        "docs/agents.md",
+        "docs/index.md",
+        "docs/cli.md"
       ]
     },
     {

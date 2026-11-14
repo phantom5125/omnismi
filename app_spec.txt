@@ -2,16 +2,18 @@ Omnismi Project Spec
 ====================
 
 Project type
-- Omnismi is a Python library, not a web app or long-running service.
+- Omnismi is a CLI-first accelerator observability, diagnostics, and validation tool for AI agents and humans, with a stable Python API for in-process integration.
+- It is not a web app, monitoring daemon, or long-running service.
 - Anthropic-style harness rules still apply, but `init.sh` should bootstrap the package and run validation instead of starting a server.
 
 Product goal
-- Provide a compact, stable, cross-vendor accelerator observability API for AI agents and Python applications.
-- Current in-scope accelerators are NVIDIA GPUs, AMD GPUs, and experimental Google TPUs.
-- Long-term expansion should add more vendors without breaking the public API contract.
+- Give agents and humans one task-oriented workflow for accelerator inventory, telemetry, error interpretation, topology, performance comparison, and explicit bounded checks.
+- Preserve evidence and uncertainty across NVIDIA GPUs, AMD GPUs, experimental Google TPUs, Alibaba PPUs, and Cambricon MLUs instead of hiding vendor/runtime constraints.
+- Long-term expansion should add more vendors without breaking the public CLI report contracts or Python API contract.
 
 Primary users
-- Coding agents that need portable accelerator preflight checks.
+- Coding agents that need portable, structured accelerator inspection and diagnosis.
+- Humans who need a readable overview, actionable findings, and explicit validation commands.
 - Python applications that need normalized accelerator inventory and metrics.
 - Contributors validating vendor/runtime parity against ground-truth libraries.
 
@@ -21,6 +23,9 @@ Current public contract
 - Public models: `GPUInfo`, `GPUMetrics`.
 - Supported public vendors today: `nvidia`, `amd`, `google`.
 - `GPU` / `gpus()` names are historical API names and currently also cover the experimental Google TPU backend.
+- Bare `omnismi` is the human overview; `-o json` opts into structured overview output.
+- `decode`, `diagnose`, `perf-doctor`, `topology`, and `bench matmul/suite` are JSON report commands with verdict exits 0 PASS, 1 WARN, 2 FAIL, 3 INCONCLUSIVE, and 64 invalid input.
+- Existing overview/doctor/validate-spec/legacy bandwidth exit behavior remains compatible; report status must not be inferred from process success alone.
 
 Public model fields
 - `GPUInfo`: `index`, `vendor`, `name`, `uuid`, `driver`, `memory_total_bytes`.
@@ -66,26 +71,14 @@ Environment compatibility goals
   discovery layer, or explain mismatches clearly through diagnostics.
 
 Planned frontier
-- More hardware validation evidence for existing NVIDIA and AMD adapters.
-- Better backend diagnostics and debug visibility.
-- A default `omnismi` CLI experience that gives a modern, cross-vendor machine
-  summary similar in spirit to `nvidia-smi`, but cleaner and more
-  automation-friendly.
-- The main CLI entry should be human-first by default: concise terminal summary
-  first, explicit `json`/`yaml` output on demand, and deeper detail moved into
-  `--wide`, `doctor`, `bench`, and `validate-spec`.
-- CLI-first machine profile and spec-validation workflows that can confirm whether
-  detected hardware matches expected capacity, bandwidth, and throughput classes.
-- The first `validate-spec` slice should stay discovery-first: compare current
-  inventory against curated profiles and explicit runtime context now, then add
-  benchmark evidence later without breaking the report shape.
-- Vendor-agnostic benchmark probes for trustable memory-bandwidth and compute
-  sanity checks, kept separate from vendor sample applications.
-- The first benchmark slice should prioritize a portable `bandwidth` probe with
-  stable `table/json/yaml` output and honest `INCONCLUSIVE` verdicts before the
-  profile registry grows sustained-bandwidth thresholds.
-- Future CLI/report surfaces should keep one stable machine-readable object model
-  across `json` and `yaml`, with human table output as a projection layer.
+- More real hardware and SDK validation evidence for existing adapters and 2.0 paths.
+- Better backend diagnostics and debug visibility without weakening graceful defaults.
+- Keep the main CLI human-first and the agent integration explicit: concise terminal
+  summary by default, structured output on demand, and active workloads only by
+  explicit command.
+- Extend machine profiles and performance evidence only with recorded conditions
+  and honest `INCONCLUSIVE` results; do not invent universal thresholds.
+- Preserve existing report schemas when expanding JSON/YAML projections.
 - Future Intel/Apple adapter work.
 - Possible later review of scheduler/runtime integration helpers after the core observability layer is mature.
 
