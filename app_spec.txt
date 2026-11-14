@@ -36,6 +36,8 @@ Hard invariants
 - `utilization_percent` means vendor-reported top-level compute/graphics engine activity. Do not relabel it as SM occupancy or CU occupancy.
 - Fixed normalized units: bytes, percent, Celsius, Watts, MHz.
 - Unavailable metrics default to `None` instead of raising in normal user flows.
+- A requested admission threshold must not pass when its required evidence is unknown.
+- Visibility environment variables apply only to their intended vendors and remain runtime hints, not proof of cgroup/device isolation.
 - Backend-specific exceptions must not leak through the default public API path.
 - Backend implementation details stay out of user-facing API docs unless required for compatibility notes.
 - Vendor onboarding must preserve the existing `count/gpus/gpu` and `info/metrics` contract.

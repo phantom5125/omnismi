@@ -130,7 +130,7 @@ See [compatibility](docs/compatibility.md) and the
 
 ## Agent admission checks (source checkout)
 
-The next release adds `omnismi preflight --min-gpus 1 --min-free-gib 8`,
+The next release adds `omnismi preflight --vendor nvidia --min-gpus 1 --min-free-gib 8`,
 `omnismi inventory`, and `omnismi metrics` as JSON snapshots, plus
 `omnismi version`. Install this source checkout to use them; the published
 2.0.0 package does not include them. The default overview and existing diagnostics,

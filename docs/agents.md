@@ -10,6 +10,7 @@ use the [Python API](api.md) only when the application needs in-process access.
 | Task | Command | Side effects |
 |---|---|---|
 | List visible devices and telemetry | `omnismi -o json` | Read-only |
+| Gate a job on vendor, count, and free memory | `omnismi preflight --vendor nvidia --min-gpus 1 --min-free-gib 8` | Read-only |
 | Explain missing devices or metrics | `omnismi doctor -o json` | Read-only |
 | Explain a recorded vendor error | `omnismi decode --vendor nvidia --namespace xid --code 48` | Offline |
 | Interpret a captured log | `omnismi diagnose --input events.log` | Offline |
@@ -64,6 +65,13 @@ report = run_report([
 print(report["status"])
 print(report["data"]["findings"])
 ```
+
+Admission commands `preflight`, `inventory`, and `metrics` have a separate JSON
+snapshot schema and exit contract: 0 admitted/nonempty, 1 usage error, 2 no
+devices, 3 unmet or unevaluable requirements, and 10 backend error. A requested
+free-memory gate returns `free_memory_unknown` instead of passing when evidence
+is missing. Their `visibility.enforcement` value is `runtime_hint_only`; do not
+present environment-variable mappings as proof of cgroup isolation.
 
 The overview, `doctor`, `validate-spec`, and legacy `bench bandwidth` commands
 use `-o json` for automation and retain their older process-exit behavior. Their

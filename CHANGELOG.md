@@ -6,10 +6,11 @@
 
 - Agent admission commands: `preflight`, `inventory`, `metrics`, and `version`,
   alongside the existing overview, diagnostics, topology, and benchmark CLI.
-- One-shot JSON snapshots with explicit timestamps, summaries, CUDA visibility
-  mappings, and distinct usage/no-device/threshold/backend exit codes.
-- Non-negative admission thresholds, unique GPU UUID prefix selection, duplicate
-  protection, and CPU-only CLI regression checks across Python 3.9–3.14.
+- One-shot JSON snapshots with explicit timestamps, summaries, vendor-aware
+  NVIDIA/AMD visibility mappings, and distinct usage/no-device/threshold/backend exits.
+- Non-negative admission thresholds, vendor-scoped counts, unique GPU UUID prefix
+  selection, duplicate protection, and fail-closed unknown free-memory evidence.
+- CPU-only CLI regression checks across Python 3.9–3.14.
 - `omnismi --version` and a task-oriented root help map covering all command families.
 - An agent integration guide with safe JSON/exit handling and explicit workload boundaries.
 
