@@ -18,6 +18,28 @@ release does not assign new model-specific certification labels.
 | Alibaba PPU | Full normalized management metrics, ECC and generation-specific codes; HGGC self-test, bandwidth and tiled FP32 compute; explicit SDK compiler command | SAIL v2.1.1 documented APIs/formats; CPU protocol/control tests pass; real HGGC compilation and PPU execution still require target verification |
 | Cambricon MLU | SDK-compiled CNDEV collector, optional registered backend, inventory and all normalized metric fields, per-field return codes | Compile against matching installed CNDEV 6 headers/library; physical management view; no tested card model claimed |
 
+## ModelScope NVIDIA A10
+
+Validated on 2026-11-13 with a ModelScope PAI-DSW free GPU instance running
+`main` commit `5602f18fae9ff2f257348d6f6bcc11c764daac88`:
+
+| Condition | Evidence |
+|---|---|
+| Device | One NVIDIA A10 with 23028 MiB memory |
+| Image | `ubuntu22.04-cuda13.0.3-py312-torch2.13.0-1.40.1` |
+| Driver/runtime | Driver 570.211.01, CUDA 13.0, PyTorch 2.13.0 |
+| Python/backend | Python 3.12.13, `nvidia-ml-py` 13.615.71 |
+| Regression suite | 266 tests passed |
+| Direct telemetry parity | Three NVIDIA samples; utilization, memory, temperature, power and clocks PASS |
+| Agent admission | `preflight --vendor nvidia --min-gpus 1 --min-free-gib 1` PASS, exit 0 |
+| Explicit workload | `bench suite --vendor nvidia --device 0 --memory-mib 64 --timeout 90` PASS, exit 0; self-test, copy, triad and compute executed |
+
+This is target-host evidence for the exercised A10 management and compute paths.
+It does not certify other models, establish whole-device health, measure full
+memory coverage, or publish a sustained-performance baseline. Raw reports remain
+in the instance's persistent `/mnt/workspace/omnismi-validation/` directory;
+public documentation omits host identifiers.
+
 ## End-to-end commands
 
 ```bash
